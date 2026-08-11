@@ -4,18 +4,9 @@
 
 ### PyTorch → 표준 MLIR → RNGD IR 자동 변환 및 검증
 
-<a href="#"><img src="https://img.shields.io/badge/IR_Coverage-100%25-brightgreen?style=flat-square" alt="IR Coverage"></a>
-<a href="#"><img src="https://img.shields.io/badge/Level_1--2-12%2F12_PASS-brightgreen?style=flat-square" alt="Level 1-2"></a>
-<a href="#"><img src="https://img.shields.io/badge/Level_3_%28NPU%29-5%2F5_PASS-brightgreen?style=flat-square" alt="Level 3"></a>
-<a href="#"><img src="https://img.shields.io/badge/CPU_Fallback-0-brightgreen?style=flat-square" alt="CPU Fallback"></a>
-<br>
-<a href="#"><img src="https://img.shields.io/badge/torch__mlir-20240127.1096-2962FF?style=flat-square" alt="torch_mlir"></a>
-<a href="#"><img src="https://img.shields.io/badge/PyTorch-2.3.0.dev-EE4C2C?style=flat-square" alt="PyTorch"></a>
-<a href="#"><img src="https://img.shields.io/badge/Python-3.11.15-3776AB?style=flat-square" alt="Python"></a>
-<a href="#"><img src="https://img.shields.io/badge/furiosa--opt--std-0.3-FF6F00?style=flat-square" alt="FuriosaAI"></a>
-<br>
-<a href="#"><img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License"></a>
-<a href="#"><img src="https://img.shields.io/badge/FuriosaAI_Simulator-Apache_2.0-orange?style=flat-square" alt="FuriosaAI Simulator"></a>
+<img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License">
+<img src="https://img.shields.io/badge/Build-PASS-brightgreen?style=flat-square" alt="Build">
+<img src="https://img.shields.io/badge/Coverage-100%25-brightgreen?style=flat-square" alt="Coverage">
 
 ---
 
