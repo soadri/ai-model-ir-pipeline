@@ -4,9 +4,9 @@
 
 ### PyTorch → 표준 MLIR → RNGD IR 자동 변환 및 검증
 
-![IR Coverage](https://img.shields.io/badge/IR_Coverage-100%25-brightgreen?style=flat-square) ![Level 1-2](https://img.shields.io/badge/Level_1--2-12%2F12_PASS-brightgreen?style=flat-square) ![Level 3](https://img.shields.io/badge/Level_3_(NPU)-5%2F5_PASS-brightgreen?style=flat-square) ![CPU Fallback](https://img.shields.io/badge/CPU_Fallback-0-brightgreen?style=flat-square)
+<img src="https://img.shields.io/badge/IR_Coverage-100%25-brightgreen?style=flat-square" alt="IR Coverage"> <img src="https://img.shields.io/badge/Level_1--2-12%2F12_PASS-brightgreen?style=flat-square" alt="Level 1-2"> <img src="https://img.shields.io/badge/Level_3_(NPU" alt="Level 3">-5%2F5_PASS-brightgreen?style=flat-square) <img src="https://img.shields.io/badge/CPU_Fallback-0-brightgreen?style=flat-square" alt="CPU Fallback">
 
-![torch_mlir](https://img.shields.io/badge/torch__mlir-20240127.1096-2962FF?style=flat-square) ![PyTorch](https://img.shields.io/badge/PyTorch-2.3.0.dev-EE4C2C?style=flat-square) ![Python](https://img.shields.io/badge/Python-3.11.15-3776AB?style=flat-square) ![FuriosaAI](https://img.shields.io/badge/furiosa--opt--std-0.3-FF6F00?style=flat-square)
+<img src="https://img.shields.io/badge/torch__mlir-20240127.1096-2962FF?style=flat-square" alt="torch_mlir"> <img src="https://img.shields.io/badge/PyTorch-2.3.0.dev-EE4C2C?style=flat-square" alt="PyTorch"> <img src="https://img.shields.io/badge/Python-3.11.15-3776AB?style=flat-square" alt="Python"> <img src="https://img.shields.io/badge/furiosa--opt--std-0.3-FF6F00?style=flat-square" alt="FuriosaAI">
 
 ---
 
