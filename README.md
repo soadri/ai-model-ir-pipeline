@@ -1,26 +1,23 @@
 <div align="center">
 
-# 🔄 AI 모델 변환(표준 IR) 파이프라인
+# AI 모델 변환(표준 IR) 파이프라인
 
 ### PyTorch → 표준 MLIR → RNGD IR 자동 변환 및 검증
 
-[![IR Coverage](https://img.shields.io/badge/IR_Coverage-100%25-brightgreen?style=for-the-badge)](.) [![Level 1-2](https://img.shields.io/badge/Level_1--2-12%2F12_PASS-brightgreen?style=for-the-badge)](.) [![Level 3](https://img.shields.io/badge/Level_3_(NPU)-5%2F5_PASS-brightgreen?style=for-the-badge)](.) [![Fallback](https://img.shields.io/badge/CPU_Fallback-0-brightgreen?style=for-the-badge)](.)
+![IR Coverage](https://img.shields.io/badge/IR_Coverage-100%25-brightgreen?style=flat-square) ![Level 1-2](https://img.shields.io/badge/Level_1--2-12%2F12_PASS-brightgreen?style=flat-square) ![Level 3](https://img.shields.io/badge/Level_3_(NPU)-5%2F5_PASS-brightgreen?style=flat-square) ![CPU Fallback](https://img.shields.io/badge/CPU_Fallback-0-brightgreen?style=flat-square)
 
-[![torch_mlir](https://img.shields.io/badge/torch__mlir-20240127.1096-2962FF?style=flat-square)](.) [![PyTorch](https://img.shields.io/badge/PyTorch-2.3.0.dev-EE4C2C?style=flat-square)](.) [![Python](https://img.shields.io/badge/Python-3.11.15-3776AB?style=flat-square)](.) [![FuriosaAI](https://img.shields.io/badge/furiosa--opt--std-0.3-FF6F00?style=flat-square)](.)
+![torch_mlir](https://img.shields.io/badge/torch__mlir-20240127.1096-2962FF?style=flat-square) ![PyTorch](https://img.shields.io/badge/PyTorch-2.3.0.dev-EE4C2C?style=flat-square) ![Python](https://img.shields.io/badge/Python-3.11.15-3776AB?style=flat-square) ![FuriosaAI](https://img.shields.io/badge/furiosa--opt--std-0.3-FF6F00?style=flat-square)
 
 ---
 
-**PyTorch AI 모델을 FuriosaAI RNGD NPU에서 실행 가능한 형태(RNGD IR)로 변환하고,**
-**변환 결과의 정확성을 3레벨로 자동 검증하는 오픈소스 파이프라인입니다.**
+**PyTorch AI 모델을 FuriosaAI RNGD NPU에서 실행 가능한 형태(RNGD IR)로 변환하고,<br>변환 결과의 정확성을 3레벨로 자동 검증하는 오픈소스 파이프라인입니다.**
 
 </div>
 
 > [!NOTE]
 > 현재 RNGD IR(`rngd.*` Dialect)은 FuriosaAI의 vISA 문서와 기능 시뮬레이터 분석을 기반으로 KETI가 선행 설계한 것이며, FuriosaAI의 공식 RNGD Dialect 공개 시 해당 스펙에 맞춰 대조·적용될 예정입니다.
 
-<br>
-
-## 🏗️ 변환 파이프라인
+## 변환 파이프라인
 
 ```mermaid
 flowchart TD
@@ -51,56 +48,14 @@ flowchart TD
     style SEED fill:none,stroke:#2E7D32,color:#2E7D32
 ```
 
-<br>
+## 주요 기능
 
-## ✨ 주요 기능
+- **IR 변환** — linalg IR → rngd.* IR 자동 변환. Llama-3.1 8B 기준 54개 연산, 커버리지 100%, 복합 패턴 8개 그룹 식별.
+- **3레벨 검증** — Level 1-2: IR 변환 구조 정확성 12/12 + RefBackend 수치 비교. Level 3: vISA 커널 컴파일 → 시뮬레이터 실행 → PyTorch 출력과 비교. 5/5 PASS.
+- **커스텀 모델 분석** — nn.Module 코드 입력 → 변환 커버리지, 미지원 op 상세, 복합 패턴, IR 미리보기. 12개 LLM 예시 포함.
+- **오픈소스 동기화 및 검증 (CI)** — Upstream 의존성(torch_mlir, PyTorch, FuriosaAI) 변경 추적 + 매일 자동 검증.
 
-<table>
-<tr>
-<td width="50%">
-
-### 🔄 IR 변환
-linalg → rngd.* 자동 변환
-- Llama-3.1 8B 기준 54개 연산
-- 변환 커버리지 **100%**
-- 복합 패턴 8개 그룹 식별
-
-</td>
-<td width="50%">
-
-### ✅ 3레벨 검증
-변환 정확성 + NPU 정합성
-- Level 1-2: 구조 정확성 **12/12**
-- Level 3: NPU 시뮬레이터 **5/5**
-- 오차 허용 기준 정책 (tolerance_policy)
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🧪 커스텀 모델 분석
-nn.Module 코드 입력으로 즉시 분석
-- 변환 커버리지 + 미지원 op 상세
-- 12개 LLM 예시 코드 포함
-- IR 미리보기 + 마커 분류
-
-</td>
-<td width="50%">
-
-### 🔁 오픈소스 동기화 (CI)
-Upstream 변경 추적 + 자동 검증
-- torch_mlir / PyTorch / FuriosaAI
-- 매일 자동 검증 실행
-- 대시보드에서 CI 이력 확인
-
-</td>
-</tr>
-</table>
-
-<br>
-
-## 📊 검증 현황
+## 검증 현황
 
 > Llama-3.1 8B Decoder Layer 1개, 축소판 dim=16 기준
 
@@ -112,61 +67,45 @@ Upstream 변경 추적 + 자동 검증
 | 복합 패턴 | **8개** 그룹 | RMSNorm, Softmax, SiLU, Attention, FFN, Residual |
 | sim_mid (dim=64) | **2/4** PASS | FFN + RMSNorm 타일링 완료 |
 
-<br>
+## 활용 시나리오
 
-## 🎯 활용 시나리오
+- **RNGD 도입 검토** — 자사 AI 모델의 NPU 지원 여부를 사전 확인하고, 커버리지와 정합성 결과로 도입 의사결정 근거를 확보합니다.
+- **NPU 호환성 분석** — 실행 가능 연산과 CPU Fallback을 구분하여, 모델의 NPU 호환 범위를 파악합니다.
+- **MLIR 기반 컴파일 학습** — PyTorch → linalg IR → RNGD IR 전 과정이 오픈소스로 공개되어 있어 학습 및 실험이 가능합니다.
+- **NPU 파이프라인 참고 구현** — RNGD Dialect 부분을 자사 NPU Dialect로 교체하여 동일한 프레임워크를 재활용할 수 있습니다.
 
-| | 시나리오 | 설명 |
-|:---:|---------|------|
-| 🏢 | **RNGD 도입 검토** | 자사 AI 모델의 NPU 지원 여부를 사전 확인. 커버리지와 정합성 결과로 도입 근거 확보 |
-| 🔍 | **NPU 호환성 분석** | 실행 가능 연산과 CPU Fallback을 구분하여 NPU 호환 범위 파악 |
-| 📚 | **MLIR 기반 컴파일 학습** | PyTorch → linalg IR → RNGD IR 전 과정을 오픈소스로 학습 |
-| 🔧 | **NPU 파이프라인 참고 구현** | RNGD Dialect 부분을 자사 NPU Dialect로 교체하여 프레임워크 재활용 |
-
-<br>
-
-## 🖥️ 대시보드
+## 대시보드
 
 웹 대시보드에서 바로 파이프라인을 체험할 수 있습니다.
 
-| 모드 | 기능 |
-|:-----|:-----|
-| **👤 User** | 모델 선택/코드 입력 → 변환 실행 → 결과 확인 → JSON 리포트 다운로드 |
-| **🔒 Dev. Admin** | 변환 규칙 레지스트리, Llama-3.1 분석, Golden Reference, IR Coverage, 파이프라인 검증/현황 |
+- **User** — 모델 선택 또는 코드 입력 → 변환 실행 → 결과 확인 → JSON 리포트 다운로드
+- **Dev. Admin** — 변환 규칙 레지스트리, Llama-3.1 분석, Golden Reference, IR Coverage, 파이프라인 검증 및 현황
 
-<br>
-
-## 📁 파일 구조
+## 파일 구조
 
 ```
 rngd-mlir-pipeline/
 │
-├── 🔄 IR 변환
-│   ├── e2e_pipeline.py          # 변환 핵심 (rewrite_to_rngd)
-│   ├── models.py                # 모델 정의 (LlamaDecoderLayer 등)
-│   └── tolerance_policy.py      # 오차 허용 기준 정책
+├── e2e_pipeline.py          # IR 변환 핵심 (rewrite_to_rngd)
+├── models.py                # 모델 정의 (LlamaDecoderLayer 등)
+├── tolerance_policy.py      # 오차 허용 기준 정책
 │
-├── ✅ 검증
-│   ├── verify_transform.py      # Level 1-2 검증
-│   ├── npu_direct_verify.py     # Level 3 NPU 정합성 검증
-│   ├── run_all_verify.py        # CLI 전체 검증
-│   └── verify_snapshot.py       # 스냅샷 비교
+├── verify_transform.py      # Level 1-2 검증
+├── npu_direct_verify.py     # Level 3 NPU 정합성 검증
+├── run_all_verify.py        # CLI 전체 검증
+├── verify_snapshot.py       # 스냅샷 비교
 │
-├── 🔁 CI
-│   ├── ci_runner.py             # 자동 검증
-│   └── upstream_check.py        # Upstream 버전 추적
+├── ci_runner.py             # CI 자동 검증
+├── upstream_check.py        # Upstream 버전 추적
 │
-└── 🖥️ 대시보드
-    ├── dashboard_app.py         # 서버 (FastAPI)
-    ├── verify_router.py         # API 라우터
-    ├── dashboard_index.html     # 프론트엔드
-    ├── registry.py              # 변환 규칙 DB 헬퍼
-    └── rngd_registry.db         # 변환 규칙 DB (24개 op)
+├── dashboard_app.py         # 대시보드 서버 (FastAPI)
+├── verify_router.py         # API 라우터
+├── dashboard_index.html     # 프론트엔드
+├── registry.py              # 변환 규칙 DB 헬퍼
+└── rngd_registry.db         # 변환 규칙 DB (24개 op)
 ```
 
-<br>
-
-## ⚙️ 환경
+## 환경
 
 | 항목 | 버전 | 비고 |
 |:-----|:-----|:-----|
@@ -175,14 +114,10 @@ rngd-mlir-pipeline/
 | Python | `3.11.15` | |
 | FuriosaAI 시뮬레이터 | `furiosa-opt-std 0.3` | simulation 백엔드 |
 
-<br>
+## 피드백
 
-## 💬 피드백
+파이프라인 활용 중 미지원 연산 발견, 변환 결과 이상, 개선 제안 등이 있으면 **[GitHub Issues](https://github.com/soadri/ai-model-ir-pipeline/issues)** 에 등록해주세요.
 
-파이프라인 활용 중 미지원 연산 발견, 변환 결과 이상, 개선 제안 등이 있으면 **GitHub Issues**에 등록해주세요.
-
-<br>
-
-## 📄 라이선스
+## 라이선스
 
 > [라이선스 검토 중]
