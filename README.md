@@ -120,4 +120,4 @@ rngd-mlir-pipeline/
 
 ## 라이선스
 
-> [라이선스 검토 중]
+Apache License 2.0
