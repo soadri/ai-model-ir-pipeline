@@ -25,7 +25,7 @@ AI 모델 변환(표준 IR) 파이프라인은 PyTorch로 작성된 AI 모델이
 
 <br>
 
-## 구조
+## 변환 파이프라인 구조
 
 <img src="docs/assets/architecture.svg" alt="파이프라인 구조: 표준 IR 변환과 분석(1~3), NPU 특화 IR 변환과 시뮬레이터 실행(4~6), 계층적 검증과 결과 확인(7~9), 정기 재검증" width="100%">
 
