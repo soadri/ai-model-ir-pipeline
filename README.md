@@ -16,9 +16,12 @@
 
 AI 모델 변환(표준 IR) 파이프라인은 PyTorch로 작성된 AI 모델이 NPU에서 실행 가능한 형태로 바뀌는 과정을 단계별로 보여주고 검증하는 오픈소스 도구입니다. 모델을 표준 MLIR(linalg) 표현으로 변환한 뒤 NPU 특화 IR로 낮추고, 커널을 NPU 시뮬레이터에서 실행해 PyTorch 결과와 수치를 비교합니다.
 
-- **투명한 변환 과정** — 모델의 각 연산이 어떤 표준 IR 연산을 거쳐 어떤 NPU 특화 연산이 되는지 그대로 확인할 수 있습니다.
-- **계층적 검증** — IR 구조의 정합성부터 NPU 시뮬레이터에서의 연산 결과까지 세 단계로 검증합니다.
-- **생태계 변화 대응** — PyTorch, torch-mlir 등 상류 오픈소스의 변화를 추적하고 같은 기준으로 다시 검증합니다.
+- **투명한 변환 과정**<br>
+  모델의 각 연산이 어떤 표준 IR 연산을 거쳐 어떤 NPU 특화 연산이 되는지 그대로 확인할 수 있습니다.
+- **계층적 검증**<br>
+  IR 구조의 정합성부터 NPU 시뮬레이터에서의 연산 결과까지 세 단계로 검증합니다.
+- **생태계 변화 대응**<br>
+  PyTorch, torch-mlir 등 Upstream 오픈소스의 변화를 추적하고 같은 기준으로 다시 검증합니다.
 
 <br>
 
@@ -32,13 +35,20 @@ PyTorch 모델은 torch-mlir을 통해 표준 MLIR의 linalg 연산으로 변환
 
 ## 주요 기능
 
-| 기능 | 설명 |
-|:--|:--|
-| 표준 IR 변환·분석 | PyTorch 모델을 linalg IR로 변환하고, 각 연산을 변환 대상·흡수·형태 변환으로 분류합니다. RMSNorm, Softmax, SiLU, Attention, FFN 같은 복합 패턴도 식별합니다. |
-| NPU 특화 IR 변환 | linalg 연산을 NPU dialect 연산으로 다시 작성합니다. 예를 들어 `transpose`와 `batch_matmul`로 이어지는 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `batch_gemm`으로 결합됩니다. |
-| 계층적 검증 | Level 1-2에서 IR 변환 정합성 12개 항목을, Level 3에서 NPU 시뮬레이터 실행 결과와 PyTorch 기준값의 수치 정합성을 확인합니다. |
-| 사용자 모델 분석 | 직접 정의한 `nn.Module`을 입력하면 변환 커버리지, 미지원 연산, 복합 패턴, 변환된 IR을 바로 확인할 수 있습니다. |
-| 결과 확인 | 웹 대시보드와 CLI를 제공하며, 변환된 IR·커널 소스·검증 리포트를 내려받을 수 있습니다. |
+**표준 IR 변환과 분석**<br>
+PyTorch 모델을 linalg IR로 변환하고, 각 연산을 변환 대상·흡수·형태 변환으로 분류합니다. RMSNorm, Softmax, SiLU, Attention, FFN 같은 복합 패턴도 식별합니다.
+
+**NPU 특화 IR 변환**<br>
+linalg 연산을 NPU dialect 연산으로 다시 작성합니다. 예를 들어 `transpose`와 `batch_matmul`로 이어지는 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `batch_gemm`으로 결합됩니다.
+
+**계층적 검증**<br>
+Level 1-2에서 IR 변환 정합성 12개 항목을, Level 3에서 NPU 시뮬레이터 실행 결과와 PyTorch 기준값의 수치 정합성을 확인합니다.
+
+**사용자 모델 분석**<br>
+직접 정의한 `nn.Module`을 입력하면 변환 커버리지, 미지원 연산, 복합 패턴, 변환된 IR을 바로 확인할 수 있습니다.
+
+**결과 확인**<br>
+웹 대시보드와 CLI를 제공하며, 변환된 IR·커널 소스·검증 리포트를 내려받을 수 있습니다.
 
 <br>
 
@@ -52,20 +62,23 @@ Llama-3.1 8B Decoder Layer를 표준 IR로 변환하면 RMSNorm, Attention, FFN(
 
 ## 검증 결과
 
-Llama-3.1 8B Decoder Layer 한 개를 실제 모델 크기로 구성해 검증한 결과입니다.
+Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 14336, attention head 32, KV head 8, head dim 128, RoPE와 Causal Mask 포함)로 구성해 검증했습니다.
 
-| 항목 | 결과 |
-|:--|:--|
-| 모델 구성 | dim 4096, hidden 14336, attention head 32, KV head 8, head dim 128, RoPE와 Causal Mask 포함 |
-| Level 1-2 IR 변환 정합성 | 12 / 12 통과 |
-| 연산 변환 커버리지 | 100% (NPU dialect 연산 50개) |
-| 복합 패턴 식별 | 8개 그룹 (RMSNorm 2, Softmax, SiLU, Attention, FFN, Residual 2) |
-| Level 3 Decoder Layer 전체 | 상대 오차 0.62% (NPU 시뮬레이터 GEMM 1,664회) |
-| 규모별 검증 | dim 64부터 4096까지 단계별 Decoder Layer 전체 통과 |
-| 입력 다양성 | 입력 조건 8종에서 상대 오차 f32 0.50% 이하, bf16 1.07% 이하 |
+<div align="center">
+
+| Level 1-2 IR 정합성 | 연산 변환 커버리지 | Level 3 상대 오차 | 시뮬레이터 GEMM 실행 |
+|:--:|:--:|:--:|:--:|
+| **12 / 12** | **100%** | **0.62%** | **1,664회** |
+
+</div>
+
+- NPU dialect 연산 50개로 변환되었고, 미분류 연산은 없었습니다.
+- 복합 패턴 8개 그룹(RMSNorm 2, Softmax, SiLU, Attention, FFN, Residual 2)을 식별했습니다.
+- dim 64부터 4096까지 규모를 키워가며 Decoder Layer 전체 검증을 모두 통과했습니다.
+- 입력 조건 8종에서 상대 오차가 f32 0.50% 이하, bf16 1.07% 이하로 유지되었습니다.
 
 > [!NOTE]
-> Level 3는 **NPU 시뮬레이터(Functional)** 에서 연산 결과의 정합성을 확인하는 단계로, 실제 NPU에서의 실행 성능을 나타내지 않습니다. 기본 제공 모델의 Level 3 검증은 같은 조건(seed 42)의 PyTorch 모델에서 미리 생성한 기준값을 사용합니다.
+> Level 3는 **NPU 시뮬레이터**(Functional)에서 연산 결과의 정합성을 확인하는 단계로, 실제 NPU에서의 실행 성능을 나타내지 않습니다. 기본 제공 모델의 Level 3 검증은 같은 조건(seed 42)의 PyTorch 모델에서 미리 생성한 기준값을 사용합니다.
 
 <br>
 
