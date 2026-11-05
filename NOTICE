@@ -1,0 +1,17 @@
+AI 모델 변환(표준 IR) 파이프라인 (AI Model IR Pipeline)
+Copyright 2026 Korea Electronics Technology Institute (KETI)
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+이 프로젝트가 사용하거나 함께 배포하는 제3자 구성 요소와 라이선스:
+
+  - PyTorch                      BSD-3-Clause
+  - torch-mlir                   Apache-2.0 WITH LLVM-exception
+  - furiosa-opt (crates, CLI)    Apache-2.0
+  - FastAPI, Uvicorn, Pydantic   MIT
+  - NumPy                        BSD-3-Clause
+
+문서 이미지(docs/assets)의 글자는 아래 글꼴을 윤곽선으로 변환해 사용했습니다.
+
+  - Pretendard                   SIL Open Font License 1.1
+  - JetBrains Mono               SIL Open Font License 1.1
