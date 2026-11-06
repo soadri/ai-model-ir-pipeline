@@ -1,0 +1,352 @@
+[package]
+name = "rngd-tcp-kernel-dev"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# `cargo furiosa-opt` sets `--cfg backend="..."`. Declare the known values so the
+# bare `cargo build` / `cargo check` paths don't emit unexpected-cfg warnings.
+[package.metadata.furiosa-opt]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(backend, values("simulation", "emulation", "npu", "typecheck"))'] }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "constant_add"
+path = "src/constant_add.rs"
+
+[[bin]]
+name = "elementwise_mul"
+path = "src/elementwise_mul.rs"
+
+[[bin]]
+name = "dot_product"
+path = "src/dot_product.rs"
+
+[[bin]]
+name = "gemv"
+path = "src/gemv.rs"
+
+[[bin]]
+name = "gemm"
+path = "src/gemm.rs"
+
+[dependencies]
+furiosa-opt-std = "0.6"
+bytemuck = { version = "1", features = ["derive"] }
+rand = "0.9"
+tokio = { version = "1.29", features = ["rt", "rt-multi-thread", "sync", "macros"] }
+
+
+[[bin]]
+name = "pilot_add_f32"
+path = "src/pilot_add_f32.rs"
+
+[[bin]]
+name = "pilot_e2e_add"
+path = "src/pilot_e2e_add.rs"
+
+[[bin]]
+name = "pilot_e2e_sub"
+path = "src/pilot_e2e_sub.rs"
+
+[[bin]]
+name = "pilot_e2e_mul"
+path = "src/pilot_e2e_mul.rs"
+
+[[bin]]
+name = "pilot_batch_gemm"
+path = "src/pilot_batch_gemm.rs"
+
+[[bin]]
+name = "pilot_e2e_batch_gemm"
+path = "src/pilot_e2e_batch_gemm.rs"
+
+[[bin]]
+name = "pilot_e2e_gemm"
+path = "src/pilot_e2e_gemm.rs"
+
+[[bin]]
+name = "pilot_e2e_div"
+path = "src/pilot_e2e_div.rs"
+
+[[bin]]
+name = "pilot_e2e_dot_product"
+path = "src/pilot_e2e_dot_product.rs"
+
+[[bin]]
+name = "pilot_e2e_rsqrt"
+path = "src/pilot_e2e_rsqrt.rs"
+
+[[bin]]
+name = "pilot_e2e_pow2"
+path = "src/pilot_e2e_pow2.rs"
+
+[[bin]]
+name = "pilot_e2e_sqrt"
+path = "src/pilot_e2e_sqrt.rs"
+
+
+
+[[bin]]
+name = "pilot_e2e_exp"
+path = "src/pilot_e2e_exp.rs"
+
+[[bin]]
+name = "pilot_e2e_sigmoid"
+path = "src/pilot_e2e_sigmoid.rs"
+
+[[bin]]
+name = "pilot_e2e_log"
+path = "src/pilot_e2e_log.rs"
+
+[[bin]]
+name = "pilot_e2e_tanh"
+path = "src/pilot_e2e_tanh.rs"
+
+[[bin]]
+name = "pilot_e2e_sin"
+path = "src/pilot_e2e_sin.rs"
+
+[[bin]]
+name = "pilot_e2e_cos"
+path = "src/pilot_e2e_cos.rs"
+
+[[bin]]
+name = "pilot_e2e_gemv"
+path = "src/pilot_e2e_gemv.rs"
+
+[[bin]]
+name = "pilot_e2e_erf"
+path = "src/pilot_e2e_erf.rs"
+
+[[bin]]
+name = "pilot_e2e_transpose"
+path = "src/pilot_e2e_transpose.rs"
+
+# [[bin]]
+# name = "pilot_e2e_reduce_mean"
+# path = "src/pilot_e2e_reduce_mean.rs"
+
+[[bin]]
+name = "pilot_e2e_silu"
+path = "src/pilot_e2e_silu.rs"
+
+[[bin]]
+name = "pilot_e2e_gelu"
+path = "src/pilot_e2e_gelu.rs"
+
+[[bin]]
+name = "pilot_e2e_gemm_large"
+path = "src/pilot_e2e_gemm_large.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_gate"
+path = "src/pilot_golden_ffn_gate.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_silu"
+path = "src/pilot_golden_ffn_silu.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_up"
+path = "src/pilot_golden_ffn_up.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_down"
+path = "src/pilot_golden_ffn_down.rs"
+
+[[bin]]
+name = "pilot_golden_rmsnorm_xsq"
+path = "src/pilot_golden_rmsnorm_xsq.rs"
+
+[[bin]]
+name = "pilot_golden_rmsnorm_rsqrt"
+path = "src/pilot_golden_rmsnorm_rsqrt.rs"
+
+[[bin]]
+name = "pilot_golden_rmsnorm_xnorm"
+path = "src/pilot_golden_rmsnorm_xnorm.rs"
+
+[[bin]]
+name = "pilot_golden_attn_wq"
+path = "src/pilot_golden_attn_wq.rs"
+
+[[bin]]
+name = "pilot_golden_attn_wk"
+path = "src/pilot_golden_attn_wk.rs"
+
+[[bin]]
+name = "pilot_golden_attn_wv"
+path = "src/pilot_golden_attn_wv.rs"
+
+[[bin]]
+name = "pilot_golden_attn_wo"
+path = "src/pilot_golden_attn_wo.rs"
+
+[[bin]]
+name = "pilot_golden_attn_scores"
+path = "src/pilot_golden_attn_scores.rs"
+
+[[bin]]
+name = "pilot_golden_attn_sv"
+path = "src/pilot_golden_attn_sv.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_e2e"
+path = "src/pilot_golden_ffn_e2e.rs"
+
+[[bin]]
+name = "pilot_golden_rmsnorm_e2e"
+path = "src/pilot_golden_rmsnorm_e2e.rs"
+
+[[bin]]
+name = "pilot_golden_attn_e2e"
+path = "src/pilot_golden_attn_e2e.rs"
+
+[[bin]]
+name = "pilot_golden_block_e2e"
+path = "src/pilot_golden_block_e2e.rs"
+
+[[bin]]
+name = "pilot_golden_reduce_sum"
+path = "src/pilot_golden_reduce_sum.rs"
+
+[[bin]]
+name = "pilot_golden_rmsnorm_e2e_npu"
+path = "src/pilot_golden_rmsnorm_e2e_npu.rs"
+
+# [[bin]]  # TODO: Phase 3 비활성화 커널
+# name = "pilot_golden_intra_reduce"
+# path = "src/pilot_golden_intra_reduce.rs"
+
+[[bin]]
+name = "pilot_golden_tiling_n32"
+path = "src/pilot_golden_tiling_n32.rs"
+
+[[bin]]
+name = "pilot_golden_tiling_n128"
+path = "src/pilot_golden_tiling_n128.rs"
+
+[[bin]]
+name = "pilot_golden_tiling_k32"
+path = "src/pilot_golden_tiling_k32.rs"
+
+[[bin]]
+name = "pilot_golden_tiling_2d"
+path = "src/pilot_golden_tiling_2d.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_dim32"
+path = "src/pilot_golden_ffn_dim32.rs"
+
+# [[bin]]  # TODO: 수동 수정 필요
+# name = "tiled_k32_n16"
+# path = "src/tiled_matmul_k32_n16_host.rs"
+
+# [[bin]]  # TODO: 수동 수정 필요
+# name = "tiled_k64_n32"
+# path = "src/tiled_matmul_k64_n32_host.rs"
+
+# [[bin]]  # TODO: 수동 수정 필요
+# name = "tiled_k128_n64"
+# path = "src/tiled_matmul_k128_n64_host.rs"
+
+# [[bin]]  # TODO: 수동 수정 필요
+# name = "tiled_k256_n128"
+# path = "src/tiled_matmul_k256_n128_host.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_dim64"
+path = "src/pilot_golden_ffn_dim64.rs"
+
+[[bin]]
+name = "pilot_golden_rmsnorm_dim64"
+path = "src/pilot_golden_rmsnorm_dim64.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_down_k8"
+path = "src/pilot_golden_ffn_down_k8.rs"
+
+[[bin]]
+name = "pilot_golden_ffn_down_n16"
+path = "src/pilot_golden_ffn_down_n16.rs"
+
+[[bin]]
+name = "pilot_golden_attn_qkt"
+path = "src/pilot_golden_attn_qkt.rs"
+
+[[bin]]
+name = "custom_verify_elementwise"
+path = "src/custom_verify_elementwise.rs"
+
+[[bin]]
+name = "custom_verify_silu"
+path = "src/custom_verify_silu.rs"
+
+[[bin]]
+name = "pilot_golden_attn_dim64"
+path = "src/pilot_golden_attn_dim64.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim64"
+path = "src/pilot_golden_block_dim64.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim128"
+path = "src/pilot_golden_block_dim128.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim256"
+path = "src/pilot_golden_block_dim256.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim512"
+path = "src/pilot_golden_block_dim512.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim1024"
+path = "src/pilot_golden_block_dim1024.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim2048"
+path = "src/pilot_golden_block_dim2048.rs"
+
+[[bin]]
+name = "test_k128_kernel"
+path = "src/test_k128_kernel.rs"
+
+[[bin]]
+name = "test_k128_run"
+path = "src/test_k128_run.rs"
+
+[[bin]]
+name = "test_k256_run"
+path = "src/test_k256_run.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim2048k256"
+path = "src/pilot_golden_block_dim2048k256.rs"
+
+[[bin]]
+name = "test_m16k256_run"
+path = "src/test_m16k256_run.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim2048m16"
+path = "src/pilot_golden_block_dim2048m16.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim4096m16"
+path = "src/pilot_golden_block_dim4096m16.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim4096r"
+path = "src/pilot_golden_block_dim4096r.rs"
+
+[[bin]]
+name = "pilot_golden_block_dim4096f"
+path = "src/pilot_golden_block_dim4096f.rs"

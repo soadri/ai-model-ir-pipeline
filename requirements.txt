@@ -1,0 +1,12 @@
+# AI 모델 변환(표준 IR) 파이프라인 — Python 의존성
+#
+# torch와 torch-mlir은 원래 배포처에서 더 이상 받을 수 없는 버전이라,
+# 검증에 사용한 환경에서 재구성한 wheel을 별도로 설치합니다 (docker/wheels.sha256 참고).
+#   torch==2.3.0.dev20240122+cpu
+#   torch-mlir==20240127.1096
+#
+# 하위 의존성 버전은 constraints.txt로 고정합니다:
+#   pip install -r requirements.txt -c constraints.txt
+fastapi==0.139.0
+uvicorn==0.51.0
+numpy==1.26.4

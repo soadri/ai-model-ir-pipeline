@@ -1,0 +1,10 @@
+.git
+.idea
+**/__pycache__
+**/*.pyc
+var/
+kernels/target/
+kernels/data/custom_*
+kernels/data/golden_ffn_gate_*
+docs/
+web/demo/

@@ -11,7 +11,7 @@ This product is licensed under the Apache License, Version 2.0 (see LICENSE).
   - FastAPI, Uvicorn, Pydantic   MIT
   - NumPy                        BSD-3-Clause
 
-문서 이미지(docs/assets)의 글자는 아래 글꼴을 윤곽선으로 변환해 사용했습니다.
+대시보드(web/fonts)에 포함한 글꼴과, 문서 이미지(docs/assets)에서 윤곽선으로 변환해 사용한 글꼴:
 
   - Pretendard                   SIL Open Font License 1.1
   - JetBrains Mono               SIL Open Font License 1.1

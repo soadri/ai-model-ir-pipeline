@@ -85,7 +85,20 @@ Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 1
 ## 빠른 시작
 
 > [!IMPORTANT]
-> 소스 코드와 Docker 이미지는 **v0.1.0과 함께 공개될 예정**입니다. 공개되면 Docker만 설치된 환경에서 명령어 한 줄로 변환과 3단계 검증을 직접 실행해볼 수 있습니다.
+> 체험용 Docker 이미지는 **v0.1.0 릴리즈와 함께 공개될 예정**입니다. 공개되면 Docker만 설치된 환경에서 명령어 한 줄로 변환과 3단계 검증을 직접 실행해볼 수 있습니다.
+
+이미지에는 웹 대시보드와 명령줄 도구가 함께 들어 있습니다.
+
+```bash
+# 웹 대시보드 (브라우저에서 http://localhost:8100)
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1.0
+
+# 명령줄로 기본 모델 검증
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1.0 python -m server.cli verify --scale sim_mid
+```
+
+> [!WARNING]
+> 사용자 모델 분석은 입력한 PyTorch 코드를 체험 서버 안에서 그대로 실행합니다. 본인 PC에서만 실행하고, 외부에서 접속할 수 있는 서버로 운영하지 마세요.
 
 <br>
 

@@ -1,0 +1,9 @@
+# Rust 빌드 산출물
+target/
+
+# 로그
+test_log_*.txt
+
+# furiosa-opt 바이너리 태그
+furiosa-opt.tag
+.idea/
