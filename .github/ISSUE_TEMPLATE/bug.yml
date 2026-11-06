@@ -1,0 +1,36 @@
+name: 문제 신고
+description: 오류, 잘못된 변환 결과, 변환되지 않는 연산을 알려주세요.
+title: "[문제] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 문제 종류
+      options:
+        - 실행 오류 (서버가 뜨지 않음, 화면 오류 등)
+        - 검증 실패 (Level 1-2 또는 Level 3)
+        - 변환되지 않는 연산
+        - 기타
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 실행 환경과 이미지 버전
+      placeholder: "예: Windows 11, Docker Desktop 4.x, 이미지 0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: model
+    attributes:
+      label: 사용한 모델 코드
+      description: 사용자 모델 분석이었다면 입력한 코드를 붙여주세요.
+      render: python
+  - type: textarea
+    id: what
+    attributes:
+      label: 무슨 일이 있었나요
+      description: 기대한 결과와 실제 결과, 화면의 오류 메시지를 적어주세요.
+    validations:
+      required: true

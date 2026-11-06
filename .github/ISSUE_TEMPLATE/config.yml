@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 체험 가이드
+    url: https://github.com/soadri/ai-model-ir-pipeline/blob/main/docs/GUIDE.md
+    about: 설치부터 결과 읽는 법까지 정리한 가이드입니다.

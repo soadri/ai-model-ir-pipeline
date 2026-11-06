@@ -1,0 +1,53 @@
+name: 체험 의견 남기기
+description: 체험해보신 결과와 의견을 알려주세요.
+title: "[체험] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        체험해주셔서 감사합니다. 실행 환경과 결과를 남겨주시면 다음 버전 개선에 반영하겠습니다.
+  - type: dropdown
+    id: os
+    attributes:
+      label: 실행 환경
+      options:
+        - Windows (Docker Desktop)
+        - Windows (Rancher Desktop / Podman Desktop)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Linux
+        - 기타
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 이미지 버전
+      description: 사용한 이미지 태그 (예 0.1, 0.1.0)
+      value: "0.1"
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: 해본 것
+      options:
+        - label: 기본 모델 검증 (기본 규모)
+        - label: 기본 모델 검증 (중간 규모 GQA)
+        - label: 사용자 모델 분석 (예시)
+        - label: 사용자 모델 분석 (직접 작성한 모델)
+        - label: 명령줄 실행
+  - type: dropdown
+    id: result
+    attributes:
+      label: 결과
+      options:
+        - 안내된 결과와 같게 나왔습니다
+        - 일부 다르게 나왔습니다
+        - 실행하지 못했습니다
+    validations:
+      required: true
+  - type: textarea
+    id: comment
+    attributes:
+      label: 의견
+      description: 좋았던 점, 불편했던 점, 다르게 나온 결과 등 자유롭게 적어주세요.

@@ -106,6 +106,8 @@ docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
 
 실행 이력을 보존하려면 저장소의 [`docker-compose.yml`](docker-compose.yml)로 `docker compose up -d`를 실행하세요.
 
+Windows 환경, 해볼 것, 결과 읽는 법, 문제 해결은 [체험 가이드](docs/GUIDE.md)에 정리되어 있습니다.
+
 > [!NOTE]
 > 이미지는 `linux/amd64`용입니다. Apple Silicon Mac에서는 Docker Desktop이 에뮬레이션으로 실행하므로 검증 시간이 길어질 수 있습니다.
 
@@ -147,7 +149,7 @@ PyTorch와 torch-mlir의 해당 버전은 원래 배포처에서 더 이상 내�
 
 ## 문의
 
-사용 중 미지원 연산을 발견하셨거나 변환 결과에 이상이 있으면 [GitHub Issues](https://github.com/soadri/ai-model-ir-pipeline/issues)에 남겨주세요.
+체험 의견은 [체험 의견 남기기](https://github.com/soadri/ai-model-ir-pipeline/issues/new?template=feedback.yml)로, 미지원 연산이나 오류는 [문제 신고](https://github.com/soadri/ai-model-ir-pipeline/issues/new?template=bug.yml)로 남겨주세요.
 
 <br>
 
