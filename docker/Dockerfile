@@ -5,8 +5,8 @@
 #   docker build -f docker/Dockerfile -t ai-model-ir-pipeline:dev .
 #   docker run --rm -p 127.0.0.1:8100:8100 ai-model-ir-pipeline:dev
 #
-# 빌드 전에 docker/wheels/ 에 torch·torch-mlir wheel 두 개를 넣어야 합니다.
-# (원래 배포처에서 더 이상 받을 수 없는 버전이라 별도로 제공하며, 체크섬은 docker/wheels.sha256)
+# torch·torch-mlir wheel은 원래 배포처에서 더 이상 받을 수 없는 버전이라, 이 저장소의
+# GitHub Release(build-deps-1)에서 받아 SHA-256을 확인한 뒤 설치합니다 (docker/wheels.sha256 참고).
 #
 # 1단계에서 체험에 쓰는 커널만 미리 컴파일하고, 2단계(실행 이미지)에는 컴파일된 실행 파일만
 # 옮겨 담기 때문에 실행 이미지에는 Rust 툴체인이 들어가지 않습니다.
@@ -52,6 +52,18 @@ RUN out=$(LD_LIBRARY_PATH=/out/lib /out/bin/pilot_golden_ffn_e2e --nocapture 2>&
     echo "$out" | tail -5; echo "$out" | grep -q "test result: ok"
 
 # ─────────────────────────────────────────────────────────────────
+# wheel 받기: Release에서 내려받으며 체크섬이 다르면 빌드가 실패합니다
+# ─────────────────────────────────────────────────────────────────
+FROM ${PYTHON_IMAGE} AS wheels
+ARG DEPS_URL=https://github.com/soadri/ai-model-ir-pipeline/releases/download/build-deps-1
+ADD --checksum=sha256:083586533e4763ee4807cbb7bafb3beb52acc603c610f436781146d98626efed \
+    ${DEPS_URL}/torch-2.3.0.dev20240122%2Bcpu-cp311-cp311-linux_x86_64.whl \
+    /wheels/torch-2.3.0.dev20240122+cpu-cp311-cp311-linux_x86_64.whl
+ADD --checksum=sha256:055d1c2684c10af1d77095ed6a973f2aaddf6edf32d29b9bb2b939f32455c971 \
+    ${DEPS_URL}/torch_mlir-20240127.1096-cp311-cp311-linux_x86_64.whl \
+    /wheels/torch_mlir-20240127.1096-cp311-cp311-linux_x86_64.whl
+
+# ─────────────────────────────────────────────────────────────────
 # 2단계: 실행 이미지
 # ─────────────────────────────────────────────────────────────────
 FROM ${PYTHON_IMAGE}
@@ -67,13 +79,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
 
 WORKDIR /opt/app
 
-# Python 의존성 — 재구성 wheel은 체크섬을 확인한 뒤 설치
+# Python 의존성 — wheel은 별도 단계에서 받은 것을 설치할 때만 연결해 최종 이미지에 남기지 않음
 COPY requirements.txt constraints.txt ./
-COPY docker/wheels/ /tmp/wheels/
-COPY docker/wheels.sha256 /tmp/wheels/wheels.sha256
-RUN cd /tmp/wheels && sha256sum -c wheels.sha256 \
- && pip install /tmp/wheels/*.whl -r /opt/app/requirements.txt -c /opt/app/constraints.txt \
- && rm -rf /tmp/wheels
+RUN --mount=type=bind,from=wheels,source=/wheels,target=/tmp/wheels \
+    pip install /tmp/wheels/*.whl -r /opt/app/requirements.txt -c /opt/app/constraints.txt
 
 # 미리 컴파일한 커널, 커널 소스(실행 이력의 소스 다운로드용), 체험 데이터, 파이프라인 코드
 COPY --from=kernel-build /out/ ./kernels/

@@ -1,2 +1,5 @@
+# torch·torch-mlir 재구성 wheel 체크섬
+# 배포 위치: https://github.com/soadri/ai-model-ir-pipeline/releases/tag/build-deps-1
+# Dockerfile의 ADD --checksum 값과 같아야 합니다.
 083586533e4763ee4807cbb7bafb3beb52acc603c610f436781146d98626efed  torch-2.3.0.dev20240122+cpu-cp311-cp311-linux_x86_64.whl
 055d1c2684c10af1d77095ed6a973f2aaddf6edf32d29b9bb2b939f32455c971  torch_mlir-20240127.1096-cp311-cp311-linux_x86_64.whl

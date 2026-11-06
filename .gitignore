@@ -5,4 +5,3 @@ kernels/data/golden_ffn_gate_*
 __pycache__/
 *.pyc
 .idea/
-docker/wheels/*.whl
