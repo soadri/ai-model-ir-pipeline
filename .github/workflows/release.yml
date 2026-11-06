@@ -8,6 +8,8 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write        # 빌드 출처 증명 서명
+  attestations: write    # 빌드 출처 증명 기록
 
 jobs:
   release:
@@ -26,6 +28,7 @@ jobs:
           echo "태그 $VERSION / 코드 $CODE_VERSION"
           [ "$VERSION" = "$CODE_VERSION" ] || { echo "::error::태그($VERSION)와 rngd_pipeline/__init__.py의 버전($CODE_VERSION)이 다릅니다"; exit 1; }
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "MINOR=${VERSION%.*}" >> "$GITHUB_ENV"   # 0.1.0 → 0.1
 
       - name: 디스크 공간 확보
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
@@ -72,12 +75,35 @@ jobs:
           docker run --rm -v "$PWD/out:/out" "$IMAGE:$VERSION" \
             python -m server.cli convert /out/sample_model.py --json /out/convert-swiglu.json
 
-      - name: GHCR 배포
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
-          docker push "$IMAGE:$VERSION"
-          docker push "$IMAGE:latest"
+      # 검증을 모두 통과한 경우에만 아래 배포 단계로 넘어옵니다
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: GHCR 배포 (버전, 계열, latest 태그)
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ env.IMAGE }}:${{ env.MINOR }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+
+      - name: 빌드 출처 증명 첨부
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
       - name: Release 페이지 생성
         env:
@@ -101,6 +127,20 @@ jobs:
             python3 .github/scripts/verify_summary.py out/verify-sim_small.json "기본 모델 (sim_small)"
             echo
             python3 .github/scripts/verify_summary.py out/verify-sim_mid.json "기본 모델, GQA 구조 (sim_mid)"
+            echo
+            echo "## 이미지 정보"
+            echo
+            echo "| 항목 | 값 |"
+            echo "|:--|:--|"
+            echo "| 태그 | \`$VERSION\`, \`$MINOR\`, \`latest\` |"
+            echo "| 다이제스트 | \`${{ steps.push.outputs.digest }}\` |"
+            echo "| 플랫폼 | linux/amd64 |"
+            echo
+            echo "이 이미지가 이 저장소의 공개 소스에서 GitHub Actions로 빌드됐는지 직접 확인할 수 있습니다."
+            echo
+            echo '```bash'
+            echo "gh attestation verify oci://$IMAGE:$VERSION -R ${{ github.repository }}"
+            echo '```'
             echo
             echo "## 고정 의존성"
             echo

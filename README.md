@@ -5,11 +5,11 @@
 <br><br>
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-1F2A44?style=flat-square)](LICENSE)
-[![CI](https://github.com/soadri/ai-model-ir-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/soadri/ai-model-ir-pipeline/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/soadri/ai-model-ir-pipeline/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/soadri/ai-model-ir-pipeline/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11-005BAC?style=flat-square)
 ![Standard IR](https://img.shields.io/badge/IR-MLIR%20linalg-005BAC?style=flat-square)
 ![NPU Simulator](https://img.shields.io/badge/simulator-furiosa--opt%200.6-5B4BC4?style=flat-square)
-![Status](https://img.shields.io/badge/v0.1.0-%EA%B3%B5%EA%B0%9C%20%EC%A4%80%EB%B9%84%20%EC%A4%91-C96F1A?style=flat-square)
+[![Release](https://img.shields.io/github/v/release/soadri/ai-model-ir-pipeline?style=flat-square&color=C96F1A&label=release)](https://github.com/soadri/ai-model-ir-pipeline/releases/latest)
 
 </div>
 
@@ -85,21 +85,38 @@ Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 1
 
 ## 빠른 시작
 
-> [!IMPORTANT]
-> 체험용 Docker 이미지는 **v0.1.0 릴리즈와 함께 공개될 예정**입니다. 공개되면 Docker만 설치된 환경에서 명령어 한 줄로 변환과 3단계 검증을 직접 실행해볼 수 있습니다.
-
-이미지에는 웹 대시보드와 명령줄 도구가 함께 들어 있습니다.
+Docker만 있으면 됩니다. 이미지(내려받기 약 380MB)는 GitHub Container Registry에서 받습니다.
 
 ```bash
-# 웹 대시보드 (브라우저에서 http://localhost:8100)
-docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1.0
-
-# 명령줄로 기본 모델 검증
-docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1.0 python -m server.cli verify --scale sim_mid
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1
 ```
+
+브라우저에서 `http://localhost:8100`에 접속하면 기본 모델(Llama-3.1 8B Decoder Layer)을 변환·검증하거나, 직접 작성한 PyTorch 모델을 분석할 수 있습니다.
+
+명령줄에서 바로 실행할 수도 있습니다.
+
+```bash
+# 기본 모델 변환과 3단계 검증
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli verify --scale sim_mid
+
+# 직접 작성한 모델 파일 분석 (파일 안에 model, x 변수 정의)
+docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
+  ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli convert /tmp/model.py
+```
+
+실행 이력을 보존하려면 저장소의 [`docker-compose.yml`](docker-compose.yml)로 `docker compose up -d`를 실행하세요.
+
+> [!NOTE]
+> 이미지는 `linux/amd64`용입니다. Apple Silicon Mac에서는 Docker Desktop이 에뮬레이션으로 실행하므로 검증 시간이 길어질 수 있습니다.
 
 > [!WARNING]
 > 사용자 모델 분석은 입력한 PyTorch 코드를 체험 서버 안에서 그대로 실행합니다. 본인 PC에서만 실행하고, 외부에서 접속할 수 있는 서버로 운영하지 마세요.
+
+배포된 이미지가 이 저장소의 공개 소스에서 GitHub Actions로 빌드됐는지 직접 확인할 수 있습니다.
+
+```bash
+gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.1 -R soadri/ai-model-ir-pipeline
+```
 
 <br>
 
@@ -120,7 +137,7 @@ docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1.0 python -m server.cli v
 | torch-mlir | 20240127.1096 |
 | NPU 시뮬레이터 | furiosa-opt 0.6.0 (Rust nightly-2026-05-01) |
 
-PyTorch와 torch-mlir의 해당 버전은 원래 배포처에서 더 이상 내려받을 수 없어, 검증에 사용한 설치 환경에서 wheel 파일을 재구성해 함께 제공할 예정입니다. 재구성한 환경은 원래 환경과 동일한 IR을 생성하는 것을 확인했습니다.
+PyTorch와 torch-mlir의 해당 버전은 원래 배포처에서 더 이상 내려받을 수 없어, 검증에 사용한 설치 환경에서 wheel 파일을 재구성해 [build-deps-1 릴리즈](https://github.com/soadri/ai-model-ir-pipeline/releases/tag/build-deps-1)로 제공합니다. 재구성한 환경은 원래 환경과 동일한 IR을 생성하는 것을 확인했습니다.
 
 <br>
 
