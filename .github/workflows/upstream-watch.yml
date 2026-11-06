@@ -1,4 +1,4 @@
-# 매주: 고정 의존성을 지금도 받을 수 있는지, 상류에 새 버전이 나왔는지 확인하고
+# 매주: 고정 의존성을 지금도 받을 수 있는지, Upstream에 새 버전이 나왔는지 확인하고
 #       직전 확인과 달라졌으면 `upstream` 라벨 Issue를 만들거나 갱신
 name: Upstream 변화 추적
 
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   watch:
-    name: 의존성·상류 버전 확인
+    name: 고정 의존성과 Upstream 버전 확인
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

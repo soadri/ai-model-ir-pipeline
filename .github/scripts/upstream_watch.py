@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Upstream 변화 추적 — 파이프라인이 고정해서 쓰는 의존성과 상류 생태계의 변화를 확인합니다.
+Upstream 변화 추적 — 파이프라인이 고정해서 쓰는 의존성과 Upstream 생태계의 변화를 확인합니다.
 
   1) 고정 의존성을 지금도 받을 수 있는가
      - 재구성 wheel(build-deps-1)의 존재와 SHA-256
      - furiosa-opt-std 0.6.0 (crates.io, 철회 여부)
-  2) 상류에 새 버전이 나왔는가
+  2) Upstream에 새 버전이 나왔는가
      - PyTorch 안정 버전, torch-mlir 개발 wheel, furiosa-opt-std / cargo-furiosa-opt
 
 결과는 Actions 요약에 기록하고, 직전 확인과 달라졌으면 `upstream` 라벨의 Issue를 만들거나 갱신합니다.
@@ -26,6 +26,7 @@ UA = {"User-Agent": f"{REPO} upstream-watch (github.com/{REPO})"}
 LABEL = "upstream"
 TITLE = "Upstream 변화 감지"
 MARK = "<!-- upstream-fingerprint:"
+REPORT_FORMAT = 2   # 보고서 문구·형식을 바꾸면 올려서 기존 Issue 본문을 갱신
 
 PINNED = {"torch": "2.3.0.dev20240122+cpu", "torch-mlir": "20240127.1096", "furiosa-opt-std": "0.6.0"}
 
@@ -90,7 +91,7 @@ def check_crate_pinned():
     return {"name": "furiosa-opt-std 0.6.0", "ok": True, "note": "crates.io에서 받을 수 있음"}
 
 
-# ── 2) 상류 최신 버전 ───────────────────────────────────────────────
+# ── 2) Upstream 최신 버전 ───────────────────────────────────────────────
 
 def latest_versions():
     out = {}
@@ -118,18 +119,18 @@ def build_report(pinned_rows, latest):
     lines = ["## 고정 의존성 가용성", "", "| 항목 | 상태 | 비고 |", "|:--|:--:|:--|"]
     for r in pinned_rows:
         lines.append(f"| `{r['name']}` | {'✅' if r['ok'] else '❌'} | {r['note']} |")
-    lines += ["", "## 상류 최신 버전", "", "| 구성 요소 | 파이프라인 고정 버전 | 상류 최신 |", "|:--|:--|:--|"]
+    lines += ["", "## Upstream 최신 버전", "", "| 구성 요소 | 파이프라인 고정 버전 | Upstream 최신 |", "|:--|:--|:--|"]
     pin_of = {"PyTorch (안정)": PINNED["torch"], "torch-mlir (개발 wheel)": PINNED["torch-mlir"],
               "furiosa-opt-std": PINNED["furiosa-opt-std"], "cargo-furiosa-opt": PINNED["furiosa-opt-std"]}
     for k, v in latest.items():
         lines.append(f"| {k} | {pin_of.get(k, '–')} | {v} |")
     lines += ["", "고정 의존성에 ❌가 있으면 체험 이미지를 다시 빌드할 수 없는 상태입니다. "
-              "상류 최신 버전이 바뀐 경우에는 같은 검증 기준(Level 1-2, Level 3)으로 호환성을 확인한 뒤 고정 버전 갱신을 검토합니다."]
+              "Upstream 최신 버전이 바뀐 경우에는 같은 검증 기준(Level 1-2, Level 3)으로 호환성을 확인한 뒤 고정 버전 갱신을 검토합니다."]
     return "\n".join(lines)
 
 
 def fingerprint(pinned_rows, latest):
-    key = json.dumps({"pinned": [(r["name"], r["ok"], r["note"]) for r in pinned_rows],
+    key = json.dumps({"format": REPORT_FORMAT, "pinned": [(r["name"], r["ok"], r["note"]) for r in pinned_rows],
                       "latest": {k: v for k, v in latest.items() if not str(v).startswith("확인 실패")}},
                      sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(key.encode()).hexdigest()[:16]
