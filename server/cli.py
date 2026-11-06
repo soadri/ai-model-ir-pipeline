@@ -54,7 +54,9 @@ def cmd_verify(args) -> int:
             print(f"   실패: {c['name']} — {c.get('detail', '')}")
     print(f"Level 3 NPU 시뮬레이터 {l3.get('pass_count')}/{l3.get('total')} {_mark(l3.get('all_passed'))}")
     for c in l3.get("checks", []):
-        print(f"   {'✓' if c.get('passed') else '✗'} {c['module']:<34} max_diff={c.get('max_diff')}")
+        rel = c.get("rel_err_pct")
+        err = f"상대 오차 {rel:.4g}%" if rel is not None else f"최대 오차 {c.get('max_diff')}"
+        print(f"   {'✓' if c.get('passed') else '✗'} {c['module']:<34} {err}")
     print("=" * 60 + f"\n소요 시간 {time.time() - started:.1f}초")
     _save(result, args.json)
     return 0 if l12.get("all_passed") and l3.get("all_passed") else 1

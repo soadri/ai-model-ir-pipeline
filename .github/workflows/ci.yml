@@ -1,0 +1,77 @@
+# 코드가 바뀔 때마다: 기본 점검 → 체험 이미지 빌드 → 이미지 안에서 기본 모델 검증
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: 기본 점검
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Python 문법
+        run: python -m compileall -q rngd_pipeline server docker .github/scripts
+      - name: 변환 규칙 레지스트리 복원
+        run: |
+          python - <<'PY'
+          import sqlite3
+          con = sqlite3.connect(":memory:")
+          con.executescript(open("registry/rngd_registry.sql", encoding="utf-8").read())
+          print("변환 규칙", con.execute("SELECT COUNT(*) FROM ops").fetchone()[0], "개")
+          PY
+      - name: 체험 데이터 체크섬
+        working-directory: kernels/data
+        run: sha256sum -c --quiet SHA256SUMS && echo "체험 데이터 $(ls *.bin | wc -l)개 일치"
+
+  image:
+    name: 이미지 빌드와 검증
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: 디스크 공간 확보
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: docker/setup-buildx-action@v3
+      - name: 이미지 빌드
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          load: true
+          tags: ai-model-ir-pipeline:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: 이미지 안에서 기본 모델 검증 (sim_small)
+        run: |
+          mkdir -p out && chmod 777 out
+          docker run --rm -v "$PWD/out:/out" ai-model-ir-pipeline:ci \
+            python -m server.cli verify --scale sim_small --json /out/verify-sim_small.json
+      - name: 결과 요약
+        if: always()
+        run: |
+          if [ -f out/verify-sim_small.json ]; then
+            python3 .github/scripts/verify_summary.py out/verify-sim_small.json "기본 모델 검증 (sim_small)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verify-sim_small
+          path: out/
+          if-no-files-found: ignore

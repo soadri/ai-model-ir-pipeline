@@ -5,6 +5,7 @@
 <br><br>
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-1F2A44?style=flat-square)](LICENSE)
+[![CI](https://github.com/soadri/ai-model-ir-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/soadri/ai-model-ir-pipeline/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11-005BAC?style=flat-square)
 ![Standard IR](https://img.shields.io/badge/IR-MLIR%20linalg-005BAC?style=flat-square)
 ![NPU Simulator](https://img.shields.io/badge/simulator-furiosa--opt%200.6-5B4BC4?style=flat-square)

@@ -1,0 +1,116 @@
+# 버전 태그(v0.1.0 등)를 push하면: 이미지 빌드 → 검증 → GHCR 배포 → Release 페이지 생성
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: 빌드, 검증, 배포
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 버전 확인 (태그와 코드의 버전이 같아야 함)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          CODE_VERSION=$(python3 -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('rngd_pipeline/__init__.py').read()).group(1))")
+          echo "태그 $VERSION / 코드 $CODE_VERSION"
+          [ "$VERSION" = "$CODE_VERSION" ] || { echo "::error::태그($VERSION)와 rngd_pipeline/__init__.py의 버전($CODE_VERSION)이 다릅니다"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: 디스크 공간 확보
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - uses: docker/setup-buildx-action@v3
+      - name: 이미지 빌드
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          load: true
+          tags: ${{ env.IMAGE }}:${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 검증 — 기본 모델 (sim_small, sim_mid)
+        run: |
+          mkdir -p out && chmod 777 out
+          for s in sim_small sim_mid; do
+            docker run --rm -v "$PWD/out:/out" "$IMAGE:$VERSION" \
+              python -m server.cli verify --scale "$s" --json "/out/verify-$s.json"
+          done
+
+      - name: 검증 — 사용자 모델 경로 (SwiGLU FFN)
+        run: |
+          cat > out/sample_model.py <<'PY'
+          import torch
+          import torch.nn as nn
+          torch.manual_seed(0)
+
+          class SwiGLU(nn.Module):
+              def __init__(self, dim=64, hidden=128):
+                  super().__init__()
+                  self.gate = nn.Linear(dim, hidden, bias=False)
+                  self.up = nn.Linear(dim, hidden, bias=False)
+                  self.down = nn.Linear(hidden, dim, bias=False)
+
+              def forward(self, x):
+                  return self.down(torch.nn.functional.silu(self.gate(x)) * self.up(x))
+
+          model = SwiGLU()
+          x = torch.randn(1, 8, 64)
+          PY
+          docker run --rm -v "$PWD/out:/out" "$IMAGE:$VERSION" \
+            python -m server.cli convert /out/sample_model.py --json /out/convert-swiglu.json
+
+      - name: GHCR 배포
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag "$IMAGE:$VERSION" "$IMAGE:latest"
+          docker push "$IMAGE:$VERSION"
+          docker push "$IMAGE:latest"
+
+      - name: Release 페이지 생성
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "## 체험하기"
+            echo
+            echo '```bash'
+            echo "# 웹 대시보드 (브라우저에서 http://localhost:8100)"
+            echo "docker run --rm -p 127.0.0.1:8100:8100 $IMAGE:$VERSION"
+            echo
+            echo "# 명령줄로 기본 모델 검증"
+            echo "docker run --rm $IMAGE:$VERSION python -m server.cli verify --scale sim_mid"
+            echo '```'
+            echo
+            echo "## 릴리즈 검증 결과"
+            echo
+            echo "이 버전의 이미지로 GitHub Actions에서 실행한 결과입니다."
+            echo
+            python3 .github/scripts/verify_summary.py out/verify-sim_small.json "기본 모델 (sim_small)"
+            echo
+            python3 .github/scripts/verify_summary.py out/verify-sim_mid.json "기본 모델, GQA 구조 (sim_mid)"
+            echo
+            echo "## 고정 의존성"
+            echo
+            echo "| 구성 요소 | 버전 |"
+            echo "|:--|:--|"
+            echo "| Python | 3.11 |"
+            echo "| PyTorch | 2.3.0.dev20240122+cpu ([재구성 wheel](https://github.com/${{ github.repository }}/releases/tag/build-deps-1)) |"
+            echo "| torch-mlir | 20240127.1096 ([재구성 wheel](https://github.com/${{ github.repository }}/releases/tag/build-deps-1)) |"
+            echo "| NPU 시뮬레이터 | furiosa-opt 0.6.0 |"
+          } > release-notes.md
+          rm -f out/sample_model.py
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --latest out/*.json
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
