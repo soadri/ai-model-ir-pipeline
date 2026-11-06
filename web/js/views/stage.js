@@ -4,12 +4,12 @@ import { clear, h } from "../dom.js";
 function layers() {
   const code = (...parts) => h("code", {}, parts.map((p) => (Array.isArray(p) ? h("span", { class: "mk" }, p[0]) : p)));
   return h("div", { class: "strata" },
-    h("div", { class: "stratum slate" }, h("div", { class: "name" }, "PyTorch", h("small", {}, "nn.Module")),
-      code("scores = q @ k.", ["transpose"], "(-2, -1)")),
+    h("div", { class: "stratum slate" }, h("div", { class: "name" }, "PyTorch", h("small", {}, "nn.Linear")),
+      code("q = x @ W", [".T"])),
     h("div", { class: "stratum blue" }, h("div", { class: "name" }, "표준 MLIR", h("small", {}, "linalg dialect")),
-      h("div", {}, code("linalg.", ["transpose"], " ins(%k) …"), h("br"), code("linalg.batch_matmul ins(%q, %kt)"))),
+      h("div", {}, code("linalg.generic {map: ", ["(d1, d0)"], "} ins(%W)"), h("br"), code("linalg.matmul ins(%x, %wt)"))),
     h("div", { class: "stratum violet" }, h("div", { class: "name" }, "NPU 특화 IR", h("small", {}, "NPU dialect")),
-      code("rngd.batch_gemm {", ["transpose_rhs = true"], "}")));
+      code("rngd.gemm {", ['transpose_rhs = "true"'], "}")));
 }
 
 export function renderIntro(root) {
@@ -18,7 +18,7 @@ export function renderIntro(root) {
     h("p", {}, "왼쪽에서 기본 모델이나 직접 작성한 모델을 선택하고 실행하면, 표준 MLIR(linalg)을 거쳐 NPU 특화 IR로 변환한 뒤 "
       + "IR 정합성(Level 1-2)과 NPU 시뮬레이터 실행 결과(Level 3)까지 검증합니다."),
     layers(),
-    h("p", { class: "small" }, "예: Attention의 transpose와 batch_matmul 연산 체인은 transpose_rhs 속성을 가진 하나의 NPU 연산으로 결합됩니다.")));
+    h("p", { class: "small" }, "예: nn.Linear의 가중치 transpose와 matmul 연산 체인은 transpose_rhs 속성을 가진 하나의 NPU 연산(gemm)으로 결합됩니다.")));
 }
 
 export function renderProgress(root, label, estimate) {

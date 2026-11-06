@@ -61,9 +61,9 @@ docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1
 
 | 예시 | 예상 커버리지 | 볼 것 |
 |:--|:--|:--|
-| SwiGLU FFN · Llama | 100% | 모든 연산이 NPU dialect 연산으로 변환 |
+| SwiGLU FFN · Llama | 100% | 모든 연산이 NPU dialect 연산으로 변환. `nn.Linear`의 가중치 transpose와 행렬 곱이 `transpose_rhs` 속성을 가진 하나의 `gemm`으로 결합 |
 | GELU FFN · GPT-2 | 25% | **아직 변환하지 못한 연산**에 GELU가 복합 연산으로 표시되고, 구성 연산과 이유가 함께 나옴 |
-| GQA Attention · Llama | 100% | Attention의 transpose와 행렬 곱이 하나의 `batch_gemm`으로 결합 |
+| GQA Attention · Llama | 100% | Q·K·V 투영은 `gemm`, 점수 계산과 가중합은 `batch_gemm`으로 변환되고 Softmax가 복합 패턴으로 식별 |
 
 예시 코드를 고치거나 직접 작성한 모델을 넣어봐도 됩니다. `nn.Module`을 상속한 클래스를 정의하고 마지막에 `model`과 `x` 변수를 선언하면 됩니다.
 

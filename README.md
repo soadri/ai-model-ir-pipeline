@@ -40,7 +40,7 @@ PyTorch 모델은 torch-mlir을 통해 표준 MLIR의 linalg 연산으로 변환
 PyTorch 모델을 linalg IR로 변환하고, 각 연산을 변환 대상·흡수·형태 변환으로 분류합니다. RMSNorm, Softmax, SiLU, Attention, FFN 같은 복합 패턴도 식별합니다.
 
 **NPU 특화 IR 변환**<br>
-linalg 연산을 NPU dialect 연산으로 다시 작성합니다. 예를 들어 `transpose`와 `batch_matmul`로 이어지는 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `batch_gemm`으로 결합됩니다.
+linalg 연산을 NPU dialect 연산으로 다시 작성합니다. 예를 들어 `nn.Linear`가 만드는 가중치 transpose와 `linalg.matmul`의 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `gemm`으로 결합됩니다.
 
 **계층적 검증**<br>
 Level 1-2에서 IR 변환 정합성 12개 항목을, Level 3에서 NPU 시뮬레이터 실행 결과와 PyTorch 기준값의 수치 정합성을 확인합니다.
