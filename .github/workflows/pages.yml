@@ -1,0 +1,63 @@
+# 소개 페이지 배포 — 페이지가 바뀔 때, 릴리즈와 Upstream 확인이 끝났을 때 검증 기록을 다시 만들어 배포
+name: 소개 페이지
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/assets/**"
+      - "web/fonts/**"
+      - ".github/scripts/build_site_data.py"
+      - ".github/scripts/upstream_watch.py"
+      - ".github/workflows/pages.yml"
+  workflow_run:
+    workflows: ["Release", "Upstream 변화 추적"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 검증 기록 생성과 페이지 조립
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 검증 기록 생성 (릴리즈 검증 결과, Upstream 현황)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/build_site_data.py site/data/status.json \
+            || echo "::warning::검증 기록을 새로 만들지 못해 저장소의 기존 기록으로 배포합니다"
+      - name: 페이지 조립
+        run: |
+          mkdir -p _site/assets _site/fonts
+          cp -r site/* _site/
+          cp web/fonts/*.woff2 web/fonts/LICENSE-* _site/fonts/
+          cp docs/assets/architecture.svg docs/assets/keti-logo.png docs/assets/social-preview.png _site/assets/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: 배포
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

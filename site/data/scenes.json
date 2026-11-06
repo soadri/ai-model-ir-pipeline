@@ -1,0 +1,341 @@
+{
+ "source": "v0.1.0 이미지, Llama-3.1 8B Decoder Layer (중간 규모, dim 64) 변환 결과",
+ "scenes": [
+  {
+   "key": "linear",
+   "title": "Linear",
+   "pytorch": "q = self.q_proj(x)      # nn.Linear(64, 64), x @ W.T",
+   "linalg": [
+    {
+     "raw": "%11 = linalg.generic {parallel} ins(%cst_7 : tensor<64x64xf32>) outs(%10 : tensor<64x64xf32>)",
+     "body": [],
+     "label": "transpose",
+     "to": 0,
+     "kind": "transpose"
+    },
+    {
+     "raw": "%13 = linalg.fill ins(%cst_9 : f32) outs(%12 : tensor<8x64xf32>)",
+     "body": [],
+     "label": "fill",
+     "to": null,
+     "kind": "absorbed"
+    },
+    {
+     "raw": "%14 = linalg.matmul ins(%collapsed, %11 : tensor<8x64xf32>, tensor<64x64xf32>) outs(%13 : tensor<8x64xf32>)",
+     "body": [],
+     "label": "matmul",
+     "to": 0
+    }
+   ],
+   "npu": [
+    {
+     "raw": "%29 = \"rngd.gemm\"(%28, %8) {transpose_rhs = \"true\"}",
+     "label": "gemm"
+    }
+   ],
+   "note": "가중치를 전치하는 linalg.generic과 linalg.matmul이 transpose_rhs 속성을 가진 gemm 하나로 결합됩니다. 행렬 곱의 출력을 0으로 채우는 linalg.fill은 별도 연산 없이 흡수됩니다."
+  },
+  {
+   "key": "rmsnorm",
+   "title": "RMSNorm",
+   "pytorch": "x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + eps) * self.weight",
+   "linalg": [
+    {
+     "raw": "%1 = linalg.generic {parallel} ins(%arg0 : tensor<1x8x64xf32>) outs(%0 : tensor<1x8x64xf32>)",
+     "body": [
+      "math.powf"
+     ],
+     "label": "pow",
+     "to": 0
+    },
+    {
+     "raw": "%3 = linalg.fill ins(%cst_9 : f32) outs(%2 : tensor<1x8x1xf32>)",
+     "body": [],
+     "label": "fill",
+     "to": null,
+     "kind": "absorbed"
+    },
+    {
+     "raw": "%4 = linalg.generic {reduction} ins(%1 : tensor<1x8x64xf32>) outs(%3 : tensor<1x8x1xf32>)",
+     "body": [
+      "arith.addf"
+     ],
+     "label": "sum",
+     "to": 1,
+     "kind": "reduction"
+    },
+    {
+     "raw": "%5 = linalg.generic {parallel} ins(%4 : tensor<1x8x1xf32>) outs(%2 : tensor<1x8x1xf32>)",
+     "body": [
+      "arith.divf"
+     ],
+     "label": "div",
+     "to": 2
+    },
+    {
+     "raw": "%6 = linalg.generic {parallel} ins(%5 : tensor<1x8x1xf32>) outs(%2 : tensor<1x8x1xf32>)",
+     "body": [
+      "arith.truncf",
+      "arith.addf"
+     ],
+     "label": "add eps",
+     "to": 3
+    },
+    {
+     "raw": "%7 = linalg.generic {parallel} ins(%6 : tensor<1x8x1xf32>) outs(%2 : tensor<1x8x1xf32>)",
+     "body": [
+      "math.rsqrt"
+     ],
+     "label": "rsqrt",
+     "to": 4
+    },
+    {
+     "raw": "%8 = linalg.generic {parallel} ins(%arg0, %7 : tensor<1x8x64xf32>, tensor<1x8x1xf32>) outs(%0 : tensor<1x8x64xf32>)",
+     "body": [
+      "arith.mulf"
+     ],
+     "label": "mul",
+     "to": 5
+    },
+    {
+     "raw": "%9 = linalg.generic {parallel} ins(%8, %cst_8 : tensor<1x8x64xf32>, tensor<64xf32>) outs(%0 : tensor<1x8x64xf32>)",
+     "body": [
+      "arith.mulf"
+     ],
+     "label": "mul weight",
+     "to": 6
+    }
+   ],
+   "npu": [
+    {
+     "raw": "%19 = \"rngd.elementwise\"(%arg0) {op = \"pow2\"}",
+     "label": "pow2"
+    },
+    {
+     "raw": "%22 = \"rngd.reduce\"(%19) {op = \"sum\"}",
+     "label": "sum"
+    },
+    {
+     "raw": "%23 = \"rngd.elementwise\"(%22, %20) {op = \"div\"}",
+     "label": "div"
+    },
+    {
+     "raw": "%24 = \"rngd.elementwise\"(%23, %20) {op = \"add\"}",
+     "label": "add"
+    },
+    {
+     "raw": "%25 = \"rngd.elementwise\"(%24) {op = \"rsqrt\"}",
+     "label": "rsqrt"
+    },
+    {
+     "raw": "%26 = \"rngd.elementwise\"(%arg0, %25) {op = \"mul\"}",
+     "label": "mul"
+    },
+    {
+     "raw": "%27 = \"rngd.elementwise\"(%26, %9) {op = \"mul\"}",
+     "label": "mul"
+    }
+   ],
+   "pattern": "RMSNorm",
+   "note": "linalg.generic 안에 들어 있는 연산을 읽어 각각 대응하는 NPU 연산으로 바꾸고, 일곱 연산이 이어진 모양을 RMSNorm 복합 패턴으로 식별합니다."
+  },
+  {
+   "key": "softmax",
+   "title": "Softmax",
+   "pytorch": "attn = torch.softmax(scores, dim=-1)",
+   "linalg": [
+    {
+     "raw": "%48 = linalg.fill ins(%c0_i64 : i64) outs(%47 : tensor<1x8x8x1xi64>)",
+     "body": [],
+     "label": "fill",
+     "to": null,
+     "kind": "absorbed"
+    },
+    {
+     "raw": "%50 = linalg.fill ins(%cst_10 : f32) outs(%49 : tensor<1x8x8x1xf32>)",
+     "body": [],
+     "label": "fill",
+     "to": null,
+     "kind": "absorbed"
+    },
+    {
+     "raw": "%51:2 = linalg.generic {reduction} ins(%46 : tensor<1x8x8x8xf32>) outs(%50, %48 : tensor<1x8x8x1xf32>, tensor<1x8x8x1xi64>)",
+     "body": [
+      "arith.index_cast",
+      "arith.maximumf",
+      "arith.cmpf",
+      "arith.select"
+     ],
+     "label": "max",
+     "to": 0,
+     "kind": "reduction"
+    },
+    {
+     "raw": "%52 = linalg.generic {parallel} ins(%46, %51#0 : tensor<1x8x8x8xf32>, tensor<1x8x8x1xf32>) outs(%15 : tensor<1x8x8x8xf32>)",
+     "body": [
+      "arith.subf"
+     ],
+     "label": "sub",
+     "to": 1
+    },
+    {
+     "raw": "%53 = linalg.generic {parallel} ins(%52 : tensor<1x8x8x8xf32>) outs(%15 : tensor<1x8x8x8xf32>)",
+     "body": [
+      "math.exp"
+     ],
+     "label": "exp",
+     "to": 2
+    },
+    {
+     "raw": "%54 = linalg.fill ins(%cst_9 : f32) outs(%49 : tensor<1x8x8x1xf32>)",
+     "body": [],
+     "label": "fill",
+     "to": null,
+     "kind": "absorbed"
+    },
+    {
+     "raw": "%55 = linalg.generic {reduction} ins(%53 : tensor<1x8x8x8xf32>) outs(%54 : tensor<1x8x8x1xf32>)",
+     "body": [
+      "arith.addf"
+     ],
+     "label": "sum",
+     "to": 3,
+     "kind": "reduction"
+    },
+    {
+     "raw": "%56 = linalg.generic {parallel} ins(%53, %55 : tensor<1x8x8x8xf32>, tensor<1x8x8x1xf32>) outs(%15 : tensor<1x8x8x8xf32>)",
+     "body": [
+      "arith.divf"
+     ],
+     "label": "div",
+     "to": 4
+    }
+   ],
+   "npu": [
+    {
+     "raw": "%76 = \"rngd.reduce\"(%71) {op = \"max\"}",
+     "label": "max"
+    },
+    {
+     "raw": "%77 = \"rngd.elementwise\"(%71, %76) {op = \"sub\"}",
+     "label": "sub"
+    },
+    {
+     "raw": "%78 = \"rngd.elementwise\"(%77) {op = \"exp\"}",
+     "label": "exp"
+    },
+    {
+     "raw": "%80 = \"rngd.reduce\"(%78) {op = \"sum\"}",
+     "label": "sum"
+    },
+    {
+     "raw": "%81 = \"rngd.elementwise\"(%78, %80) {op = \"div\"}",
+     "label": "div"
+    }
+   ],
+   "pattern": "Softmax",
+   "note": "최댓값과 합을 구하는 리덕션은 reduce로, 나머지는 elementwise 연산으로 바뀝니다. 리덕션의 초기값을 채우는 linalg.fill 세 개는 흡수됩니다."
+  },
+  {
+   "key": "swiglu",
+   "title": "SwiGLU FFN",
+   "pytorch": "self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))",
+   "linalg": [
+    {
+     "raw": "%71 = linalg.generic {parallel} ins(%cst_1 : tensor<128x64xf32>) outs(%70 : tensor<64x128xf32>)",
+     "body": [],
+     "label": "transpose",
+     "to": 0,
+     "kind": "transpose"
+    },
+    {
+     "raw": "%74 = linalg.matmul ins(%collapsed_35, %71 : tensor<8x64xf32>, tensor<64x128xf32>) outs(%73 : tensor<8x128xf32>)",
+     "body": [],
+     "label": "matmul",
+     "to": 0
+    },
+    {
+     "raw": "%76 = linalg.generic {parallel} ins(%expanded_36 : tensor<1x8x128xf32>) outs(%75 : tensor<1x8x128xf32>)",
+     "body": [
+      "arith.negf",
+      "math.exp",
+      "arith.addf",
+      "arith.divf"
+     ],
+     "label": "sigmoid",
+     "to": 1
+    },
+    {
+     "raw": "%77 = linalg.generic {parallel} ins(%76, %expanded_36 : tensor<1x8x128xf32>, tensor<1x8x128xf32>) outs(%75 : tensor<1x8x128xf32>)",
+     "body": [
+      "arith.mulf"
+     ],
+     "label": "mul",
+     "to": 2
+    },
+    {
+     "raw": "%78 = linalg.generic {parallel} ins(%cst_0 : tensor<128x64xf32>) outs(%70 : tensor<64x128xf32>)",
+     "body": [],
+     "label": "transpose",
+     "to": 3,
+     "kind": "transpose"
+    },
+    {
+     "raw": "%79 = linalg.matmul ins(%collapsed_35, %78 : tensor<8x64xf32>, tensor<64x128xf32>) outs(%73 : tensor<8x128xf32>)",
+     "body": [],
+     "label": "matmul",
+     "to": 3
+    },
+    {
+     "raw": "%80 = linalg.generic {parallel} ins(%77, %expanded_37 : tensor<1x8x128xf32>, tensor<1x8x128xf32>) outs(%75 : tensor<1x8x128xf32>)",
+     "body": [
+      "arith.mulf"
+     ],
+     "label": "mul",
+     "to": 4
+    },
+    {
+     "raw": "%82 = linalg.generic {parallel} ins(%cst : tensor<64x128xf32>) outs(%81 : tensor<128x64xf32>)",
+     "body": [],
+     "label": "transpose",
+     "to": 5,
+     "kind": "transpose"
+    },
+    {
+     "raw": "%83 = linalg.matmul ins(%collapsed_38, %82 : tensor<8x128xf32>, tensor<128x64xf32>) outs(%13 : tensor<8x64xf32>)",
+     "body": [],
+     "label": "matmul",
+     "to": 5
+    }
+   ],
+   "npu": [
+    {
+     "raw": "%100 = \"rngd.gemm\"(%99, %2) {transpose_rhs = \"true\"}",
+     "label": "gemm"
+    },
+    {
+     "raw": "%103 = \"rngd.elementwise\"(%101) {op = \"sigmoid\"}",
+     "label": "sigmoid"
+    },
+    {
+     "raw": "%104 = \"rngd.elementwise\"(%103, %101) {op = \"mul\"}",
+     "label": "mul"
+    },
+    {
+     "raw": "%105 = \"rngd.gemm\"(%99, %1) {transpose_rhs = \"true\"}",
+     "label": "gemm"
+    },
+    {
+     "raw": "%107 = \"rngd.elementwise\"(%104, %106) {op = \"mul\"}",
+     "label": "mul"
+    },
+    {
+     "raw": "%109 = \"rngd.gemm\"(%108, %0) {transpose_rhs = \"true\"}",
+     "label": "gemm"
+    }
+   ],
+   "pattern": "SiLU, FFN",
+   "note": "네 개의 연산(negf, exp, addf, divf)이 든 linalg.generic은 sigmoid 하나로, 세 Linear는 각각 gemm으로 바뀌어 아홉 연산이 여섯 개가 됩니다."
+  }
+ ]
+}

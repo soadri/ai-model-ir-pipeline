@@ -11,6 +11,10 @@
 ![NPU Simulator](https://img.shields.io/badge/simulator-furiosa--opt%200.6-5B4BC4?style=flat-square)
 [![Release](https://img.shields.io/github/v/release/soadri/ai-model-ir-pipeline?style=flat-square&color=C96F1A&label=release)](https://github.com/soadri/ai-model-ir-pipeline/releases/latest)
 
+<br>
+
+**[소개 페이지](https://soadri.github.io/ai-model-ir-pipeline/)** &nbsp;|&nbsp; **[체험 가이드](docs/GUIDE.md)** &nbsp;|&nbsp; **[최신 릴리즈](https://github.com/soadri/ai-model-ir-pipeline/releases/latest)**
+
 </div>
 
 <br>

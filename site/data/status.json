@@ -1,0 +1,147 @@
+{
+ "generated_at": "2026-11-06T08:05:03+00:00",
+ "run_url": null,
+ "repository": "https://github.com/soadri/ai-model-ir-pipeline",
+ "releases": [
+  {
+   "tag": "v0.1.0",
+   "url": "https://github.com/soadri/ai-model-ir-pipeline/releases/tag/v0.1.0",
+   "checks": {
+    "sim_small": {
+     "coverage": 100.0,
+     "npu_ops": 45,
+     "l12": [
+      12,
+      12
+     ],
+     "l3": [
+      5,
+      5
+     ],
+     "ok": true,
+     "modules": [
+      {
+       "name": "RMSNorm #1 (input_layernorm)",
+       "rel": 0.0,
+       "ok": true
+      },
+      {
+       "name": "FFN (SwiGLU)",
+       "rel": 1.5485,
+       "ok": true
+      },
+      {
+       "name": "RMSNorm #2 (post_attn_layernorm)",
+       "rel": 0.0,
+       "ok": true
+      },
+      {
+       "name": "Attention",
+       "rel": 0.7914,
+       "ok": true
+      },
+      {
+       "name": "Full Block",
+       "rel": 1.0163,
+       "ok": true
+      }
+     ]
+    },
+    "sim_mid": {
+     "coverage": 100.0,
+     "npu_ops": 50,
+     "l12": [
+      12,
+      12
+     ],
+     "l3": [
+      5,
+      5
+     ],
+     "ok": true,
+     "modules": [
+      {
+       "name": "RMSNorm #1 (input_layernorm)",
+       "rel": 0.0,
+       "ok": true
+      },
+      {
+       "name": "FFN (SwiGLU)",
+       "rel": 1.2564,
+       "ok": true
+      },
+      {
+       "name": "RMSNorm #2 (post_attn_layernorm)",
+       "rel": 0.0,
+       "ok": true
+      },
+      {
+       "name": "Attention",
+       "rel": 1.6063,
+       "ok": true
+      },
+      {
+       "name": "Full Block",
+       "rel": 3.3615,
+       "ok": true
+      }
+     ]
+    },
+    "custom": {
+     "coverage": 100.0,
+     "npu_ops": 6,
+     "l12": true,
+     "l3": [
+      4,
+      4
+     ],
+     "ok": true
+    }
+   },
+   "digest": "sha256:a84ef20e651a0a7d97fe135b8e15b6d3efbcf430134bec7dbbf60dc34ad2abae",
+   "published": "2026-11-06T06:39:58Z"
+  }
+ ],
+ "upstream": {
+  "pinned": [
+   {
+    "name": "torch-2.3.0.dev20240122+cpu-cp311-cp311-linux_x86_64.whl",
+    "ok": true,
+    "note": "체크섬 일치"
+   },
+   {
+    "name": "torch_mlir-20240127.1096-cp311-cp311-linux_x86_64.whl",
+    "ok": true,
+    "note": "체크섬 일치"
+   },
+   {
+    "name": "furiosa-opt-std 0.6.0",
+    "ok": true,
+    "note": "crates.io에서 받을 수 있음"
+   }
+  ],
+  "latest": [
+   {
+    "name": "PyTorch (안정)",
+    "pinned": "2.3.0.dev20240122+cpu",
+    "latest": "2.15.0"
+   },
+   {
+    "name": "torch-mlir (개발 wheel)",
+    "pinned": "20240127.1096",
+    "latest": "20260930.892"
+   },
+   {
+    "name": "furiosa-opt-std",
+    "pinned": "0.6.0",
+    "latest": "0.10.0"
+   },
+   {
+    "name": "cargo-furiosa-opt",
+    "pinned": "0.6.0",
+    "latest": "0.10.0"
+   }
+  ],
+  "ok": true
+ }
+}
