@@ -109,7 +109,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # CHANGELOG.md에서 이 버전의 변경 사항만 추출
+          python3 - "$GITHUB_REF_NAME" > changes.md <<'PY'
+          import re, sys
+          tag = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read() if __import__("os").path.exists("CHANGELOG.md") else ""
+          m = re.search(rf"^## {re.escape(tag)}\s*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
+          print(m.group(1).strip() if m else "")
+          PY
           {
+            if [ -s changes.md ]; then
+              echo "## 변경 사항"
+              echo
+              cat changes.md
+              echo
+            fi
             echo "## 체험하기"
             echo
             echo '```bash'

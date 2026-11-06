@@ -16,7 +16,7 @@ export const api = {
   demo: DEMO,
 
   info() {
-    if (DEMO) return Promise.resolve({ version: "0.1.0", kernel: { backend: "local", simulator: "furiosa-opt 0.6", prebuilt_kernels: 11 }, scales: ["sim_small", "sim_mid"] });
+    if (DEMO) return Promise.resolve({ version: "0.1.1", kernel: { backend: "local", simulator: "furiosa-opt 0.6", prebuilt_kernels: 11 }, scales: ["sim_small", "sim_mid"] });
     return json("api/info");
   },
 
