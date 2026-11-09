@@ -126,11 +126,25 @@ gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.1 -R soadri/ai
 
 <br>
 
+## 문서
+
+| 문서 | 내용 |
+|:--|:--|
+| [체험 가이드](docs/GUIDE.md) | 배포 이미지로 대시보드와 명령줄 도구 실행하기 (Windows, macOS, Linux) |
+| [빌드 가이드](docs/BUILD.md) | 소스에서 이미지 빌드, 로컬 개발 환경 구성 |
+| [NPU 특화 IR 명세](docs/IR_SPEC.md) | RNGD Dialect 연산·속성 정의, 백엔드 인터페이스, 변환 규칙 |
+| [지원 버전 정책](docs/VERSIONING.md) | 버전 번호, 지원하는 Upstream 버전, Upstream 변화 대응 절차 |
+| [기여 가이드](CONTRIBUTING.md) | 의견 제안, 문제 신고, Pull Request 절차 |
+| [변경 이력](CHANGELOG.md) | 버전별 변경 사항 |
+
+<br>
+
 ## 현재 한계
 
 - 검증은 Llama 계열 Decoder Layer 구조를 중심으로 진행했습니다. 다른 구조의 모델은 변환 커버리지가 낮을 수 있으며, 미지원 연산은 분석 결과에 그대로 표시됩니다.
 - reduce 계열 연산은 현재 CPU에서 처리합니다.
-- 표준 IR 변환은 특정 버전의 torch-mlir에 고정되어 있습니다. 최신 torch-mlir의 FX importer 경로로의 이전을 준비하고 있습니다.
+- RoPE의 부호 반전 연산은 아직 NPU 특화 IR 연산으로 바꾸지 않고 표준 IR 연산으로 남깁니다. 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#8-현재-한계)에 정리했습니다.
+- 표준 IR 변환은 특정 버전의 torch-mlir에 고정되어 있습니다. 최신 torch-mlir의 FX importer 경로로의 이전을 준비하고 있습니다([지원 버전 정책](docs/VERSIONING.md)).
 
 <br>
 
@@ -153,7 +167,7 @@ PyTorch와 torch-mlir의 해당 버전은 원래 배포처에서 더 이상 내�
 
 ## 문의
 
-체험 의견은 [체험 의견 남기기](https://github.com/soadri/ai-model-ir-pipeline/issues/new?template=feedback.yml)로, 미지원 연산이나 오류는 [문제 신고](https://github.com/soadri/ai-model-ir-pipeline/issues/new?template=bug.yml)로 남겨주세요.
+코드나 문서로 기여하는 방법은 [기여 가이드](CONTRIBUTING.md)를 참고해 주세요. 체험 의견은 [체험 의견 남기기](https://github.com/soadri/ai-model-ir-pipeline/issues/new?template=feedback.yml)로, 미지원 연산이나 오류는 [문제 신고](https://github.com/soadri/ai-model-ir-pipeline/issues/new?template=bug.yml)로 남겨주세요.
 
 <br>
 
