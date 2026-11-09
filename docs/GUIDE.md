@@ -32,7 +32,7 @@ docker --version
 아래 한 줄로 이미지를 받고 체험 서버를 실행합니다. 처음에는 이미지(약 380MB)를 내려받느라 1~3분 정도 걸립니다.
 
 ```bash
-docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.2
 ```
 
 `Uvicorn running on http://0.0.0.0:8100` 메시지가 나오면 브라우저에서 **http://localhost:8100** 에 접속합니다. 종료하려면 터미널에서 `Ctrl+C`를 누르세요.
@@ -86,7 +86,7 @@ Level 3는 연산 결과의 정합성을 확인하는 단계이며, 실제 NPU�
 웹 화면 없이 바로 결과만 볼 수도 있습니다.
 
 ```bash
-docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli verify --scale sim_mid
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.2 python -m server.cli verify --scale sim_mid
 ```
 
 직접 작성한 모델 파일을 분석하려면 파일을 컨테이너에 연결합니다.
@@ -94,13 +94,13 @@ docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli ver
 ```bash
 # macOS, Linux
 docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.2 python -m server.cli convert /tmp/model.py
 ```
 
 ```powershell
 # Windows PowerShell (줄바꿈 기호가 백틱 `)
 docker run --rm -v "${PWD}\my_model.py:/tmp/model.py:ro" `
-  ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.2 python -m server.cli convert /tmp/model.py
 ```
 
 <br>

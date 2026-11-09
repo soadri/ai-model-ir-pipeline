@@ -113,6 +113,14 @@ MATH_UNARY_OPS = {
     "math.erf":   "erf",
 }
 
+# 산술(arith) 단항 연산. 부호 반전은 RoPE의 rotate_half에서 단독으로 나타난다.
+# (sigmoid 본문 안의 negf는 sigmoid 판별이 먼저 처리하므로 여기에 해당하지 않음)
+ARITH_UNARY_OPS = {
+    "arith.negf": "negf",
+}
+
+UNARY_OPS = {**MATH_UNARY_OPS, **ARITH_UNARY_OPS}
+
 # =====================================================================
 # Family B: contraction (named op 기반)
 # =====================================================================
@@ -163,14 +171,14 @@ def rewrite_to_rngd(module: Module):
         body_block = op.regions[0].blocks[0]
         body_op_names = [str(inner.name) for inner in body_block.operations]
         binary_ops_present = [n for n in body_op_names if n in ARITH_BINARY_OPS]
-        unary_ops_present = [n for n in body_op_names if n in MATH_UNARY_OPS]
+        unary_ops_present = [n for n in body_op_names if n in UNARY_OPS]
         powf_ops_present = [n for n in body_op_names if n == "math.powf"]
         # body 안에서 무시해도 되는 보조 연산 (상수 로드, 타입 변환)
         ARITH_PASSTHROUGH = {"arith.constant", "arith.truncf", "arith.extf", "arith.sitofp"}
         other_ops = [
             n for n in body_op_names
             if n.startswith(("arith.", "math."))
-               and n not in ARITH_BINARY_OPS and n not in MATH_UNARY_OPS
+               and n not in ARITH_BINARY_OPS and n not in UNARY_OPS
                and n != "math.powf" and n not in ARITH_PASSTHROUGH
         ]
         # --- 단항(unary) elementwise: sigmoid (negf+exp+addf+divf 복합 패턴) ---
@@ -275,7 +283,7 @@ def rewrite_to_rngd(module: Module):
         # --- 단항(unary) elementwise: rsqrt 등 ---
         if num_ins == 1 and len(unary_ops_present) == 1 and not binary_ops_present:
             math_op_name = unary_ops_present[0]
-            rngd_op_name = MATH_UNARY_OPS[math_op_name]
+            rngd_op_name = UNARY_OPS[math_op_name]
             lhs = op.operands[0]
             result_type = op.results[0].type
             shape = list(RankedTensorType(result_type).shape)

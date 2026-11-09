@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |:--|:--|
 | 명세 버전 | 0.2 |
-| 기준 구현 | 파이프라인 main 브랜치, v0.2.0 예정 (`rngd_pipeline/e2e_pipeline.py`의 `rewrite_to_rngd`, `insert_optimization_markers`) |
+| 기준 구현 | 파이프라인 v0.2.0 (`rngd_pipeline/e2e_pipeline.py`의 `rewrite_to_rngd`, `insert_optimization_markers`) |
 | 변환 규칙 | `registry/rngd_registry.sql` (25개 항목) |
 | 작성 | 한국전자기술연구원(KETI) |
 
@@ -29,6 +29,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 - 모든 속성 값은 문자열입니다. 목록은 `"[0, 2, 1, 3]"`, 참·거짓은 `"true"`처럼 씁니다.
 - 텐서 타입은 표준 IR의 타입을 그대로 유지합니다(예: `tensor<1x8x64xf32>`). 변환 단계에서는 모델의 데이터 타입(f32)을 유지하고, 커널 실행 단계의 데이터 타입은 변환 규칙 레지스트리가 연산 계열별로 정합니다(8절).
 - shape은 앞 축부터 0번으로 셉니다.
+- 4절의 예시는 연산 자체의 속성만 보이도록 최적화 마커(5절)를 생략했습니다.
 
 <br>
 
@@ -90,6 +91,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | `add`, `sub`, `mul`, `div` | 사칙 연산 | 2개 | `arith.addf`, `subf`, `mulf`, `divf` |
 | `exp`, `log`, `sqrt`, `rsqrt`, `tanh`, `sin`, `cos`, `erf` | 단항 수학 함수 | 1개 | `math.*` |
 | `pow2` | 제곱 | 1개 | 지수가 2인 `math.powf` |
+| `negf` | 부호 반전 | 1개 | `arith.negf` (RoPE의 rotate_half 등) |
 | `sigmoid` | 1 / (1 + e⁻ˣ) | 1개 | `arith.negf`, `math.exp`, `arith.addf`, `arith.divf`로 이루어진 본문 |
 
 - **본문 판별**: `linalg.generic`의 본문(body)에 위 계산 중 하나만 있으면 해당 `op`로 바꿉니다. 본문이 여러 계산으로 이루어진 경우는 `sigmoid`만 인식하며, 그 밖의 조합은 변환하지 않고 미분류로 남깁니다(예: GELU).
@@ -204,7 +206,6 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | 데이터 배치 | `tensor.expand_shape`, `tensor.collapse_shape`, `tensor.extract_slice`, `tensor.concat`, `tensor.empty` | 38 | 텐서 모양만 바꾸거나 메모리를 준비하며, 계산은 없음 |
 | 흡수 대상 | `arith.constant`, `linalg.fill` | 22 | 상수와 초기화. 인접 NPU 연산에 통합될 수 있음 |
 | IR 구조 | `builtin.module`, `func.func`, `func.return`, `ml_program.global` | 4 | 모듈·함수 정의 |
-| **변환 규칙 없음** | 부호를 뒤집는 `linalg.generic` (`arith.negf` 본문) | 2 | RoPE의 rotate_half. 9절 참고 |
 
 <br>
 
@@ -239,7 +240,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | reduce | reduce_sum, reduce_max | f32 | 절대 오차 0.001, 상대 오차 1% 이하 |
 | layout | transpose, broadcast | f32 | 값이 정확히 같아야 함 |
 
-레지스트리의 `status`는 커널 쪽 지원 상태입니다. `gelu`는 `planned`(예정)이며, `silu`와 `negf`는 아래 9절처럼 재작성 규칙과 상태가 다를 수 있습니다.
+레지스트리의 `status`는 커널 쪽 지원 상태입니다. `gelu`는 `planned`(예정)이며, `silu`는 아래 9절처럼 재작성에서 하나의 연산으로 합치지 않습니다.
 
 <br>
 
@@ -247,7 +248,6 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 
 | 항목 | 내용 | 대응 계획 |
 |:--|:--|:--|
-| 부호 반전 미변환 | 레지스트리에는 `negf`가 지원으로 되어 있으나 재작성 규칙이 없어, RoPE의 부호 반전이 `linalg.generic`으로 남습니다. 연산 분류에서는 변환 대상으로 집계됩니다. | `rngd.elementwise`(`op = "negf"`) 재작성 규칙 추가 |
 | 축소 축 미기록 | `rngd.reduce`는 축소 축을 속성으로 남기지 않습니다. 입력 축의 크기가 원래 1이면 IR만으로는 축소 축을 알 수 없습니다(커널 명세의 `reduce_axes`에는 남음). | `axes` 속성 추가 |
 | 복합 본문 | 원소 단위 본문 중 `sigmoid` 외의 복합 계산(GELU 등)은 변환하지 않습니다. | 사용 빈도가 높은 조합부터 규칙 추가 |
 | SiLU | SiLU는 `sigmoid`와 `mul` 두 연산으로 표현되며, 하나의 `op = "silu"` 연산으로 합치지는 않습니다. | 복합 패턴 식별 결과를 IR 표시로 연결할 때 함께 검토 |
@@ -260,4 +260,4 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | 명세 버전 | 파이프라인 | 변경 |
 |:--|:--|:--|
 | 0.1 | v0.1.2 | 첫 공개. `rngd.transpose`의 `perm`, `rngd.broadcast`의 `broadcast_dims` 포함 (v0.1.1까지는 두 속성이 없었고, 전치·확장을 shape으로 판별) |
-| 0.2 | v0.2.0 (예정) | 최적화 마커 추가 (`rngd.fusion`, `rngd.kernel_hint`, `rngd.exec`). 기존 연산과 속성은 그대로 |
+| 0.2 | v0.2.0 | 최적화 마커 추가 (`rngd.fusion`, `rngd.kernel_hint`, `rngd.exec`), `rngd.elementwise`에 `negf`(부호 반전) 추가 |

@@ -222,8 +222,9 @@ def _ir_detail(scale: str):
 
         torch.manual_seed(42)
         sd = _scale(scale)
+        # Level 1-2 검증(run_level12)과 같은 모델 구성: 화면에 보이는 IR이 검증한 IR과 같아야 함
         model = LlamaDecoderLayer(sd["dim"], sd["hidden"], sd["n_heads"], sd["n_kv_heads"],
-                                  sd["head_dim"], sd["seq"])
+                                  sd["head_dim"], sd["seq"], always_repeat_kv=True)
         model.eval()
         x = torch.randn(1, sd["seq"], sd["dim"])
         compiled = _compile_linalg(model, x)

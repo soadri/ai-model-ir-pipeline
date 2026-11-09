@@ -92,7 +92,7 @@ Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 1
 Docker만 있으면 됩니다. 이미지(내려받기 약 380MB)는 GitHub Container Registry에서 받습니다.
 
 ```bash
-docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.2
 ```
 
 브라우저에서 `http://localhost:8100`에 접속하면 기본 모델(Llama-3.1 8B Decoder Layer)을 변환·검증하거나, 직접 작성한 PyTorch 모델을 분석할 수 있습니다.
@@ -101,11 +101,11 @@ docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.1
 
 ```bash
 # 기본 모델 변환과 3단계 검증
-docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli verify --scale sim_mid
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.2 python -m server.cli verify --scale sim_mid
 
 # 직접 작성한 모델 파일 분석 (파일 안에 model, x 변수 정의)
 docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.1 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.2 python -m server.cli convert /tmp/model.py
 ```
 
 실행 이력을 보존하려면 저장소의 [`docker-compose.yml`](docker-compose.yml)로 `docker compose up -d`를 실행하세요.
@@ -121,7 +121,7 @@ Windows 환경, 해볼 것, 결과 읽는 법, 문제 해결은 [체험 가이�
 배포된 이미지가 이 저장소의 공개 소스에서 GitHub Actions로 빌드됐는지 직접 확인할 수 있습니다.
 
 ```bash
-gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.1 -R soadri/ai-model-ir-pipeline
+gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.2 -R soadri/ai-model-ir-pipeline
 ```
 
 <br>
@@ -143,7 +143,7 @@ gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.1 -R soadri/ai
 
 - 검증은 Llama 계열 Decoder Layer 구조를 중심으로 진행했습니다. 다른 구조의 모델은 변환 커버리지가 낮을 수 있으며, 미지원 연산은 분석 결과에 그대로 표시됩니다.
 - reduce 계열 연산은 현재 CPU에서 처리합니다.
-- RoPE의 부호 반전 연산은 아직 NPU 특화 IR 연산으로 바꾸지 않고 표준 IR 연산으로 남깁니다. 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#9-현재-한계)에 정리했습니다.
+- 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#9-현재-한계)에 정리했습니다.
 - 표준 IR 변환은 특정 버전의 torch-mlir에 고정되어 있습니다. 최신 torch-mlir의 FX importer 경로로의 이전을 준비하고 있습니다([지원 버전 정책](docs/VERSIONING.md)).
 
 <br>

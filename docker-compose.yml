@@ -5,7 +5,7 @@
 #   docker compose down -v      # 종료하고 실행 이력까지 삭제
 services:
   pipeline:
-    image: ghcr.io/soadri/ai-model-ir-pipeline:0.1
+    image: ghcr.io/soadri/ai-model-ir-pipeline:0.2
     platform: linux/amd64
     ports:
       - "127.0.0.1:8100:8100"   # 이 PC에서만 접속 (사용자 모델 코드를 실행하므로 외부에 열지 마세요)
