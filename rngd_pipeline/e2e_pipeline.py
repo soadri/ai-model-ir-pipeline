@@ -369,24 +369,44 @@ def rewrite_to_rngd(module: Module):
         except (RuntimeError, ValueError, KeyError):
             return False
 
+    def _identity_layout(op):
+        """identity generic이 실제로 무엇인지 indexing_maps로 판별한다.
+
+        shape만 보면 축 크기가 같을 때(예: [1,8,8,8]) 전치와 확장을 구분할 수 없으므로,
+        입력·출력 indexing map의 관계로 판정한다. 출력 축 j는 입력 축 perm[j]에서 온다.
+        반환: ("transpose", perm) / ("broadcast", 늘어난 출력 축 목록) / ("copy", []) / (None, None)
+        """
+        try:
+            maps = [str(m) for m in op.attributes["indexing_maps"]]
+            parsed = []
+            for m in maps:
+                mm = re.search(r"\(([^)]*)\)\s*->\s*\(([^)]*)\)", m)
+                parsed.append(([d.strip() for d in mm.group(1).split(",") if d.strip()],
+                               [r.strip() for r in mm.group(2).split(",") if r.strip()]))
+            dims, rin = parsed[0]
+            _, rout = parsed[-1]
+            pure = lambda r: len(r) == len(dims) and all(x in dims for x in r) and len(set(r)) == len(r)
+            if not pure(rout):
+                return (None, None)
+            if not pure(rin):
+                return ("broadcast", [j for j, d in enumerate(rout) if d not in rin])
+            perm = [rin.index(d) for d in rout]
+            if perm == list(range(len(perm))):
+                return ("copy", [])
+            return ("transpose", perm)
+        except (KeyError, AttributeError, RuntimeError, ValueError):
+            return (None, None)
+
     def _is_transpose_generic(op) -> bool:
-        """linalg.generic이 identity body + shape 전치인지 확인.
-        torch_mlir은 linalg.transpose 대신 indexing_maps가 다른 identity generic으로
-        transpose를 표현함. 입력/출력 shape의 마지막 두 차원이 뒤바뀌면 transpose."""
+        """linalg.generic이 마지막 두 축만 바꾸는 전치인지 확인 (indexing_maps 기준).
+        torch_mlir은 linalg.transpose 대신 indexing_maps가 다른 identity generic으로 전치를 표현한다."""
         if not _is_identity_generic(op):
             return False
-        try:
-            in_shape = list(RankedTensorType(op.operands[0].type).shape)
-            out_shape = list(RankedTensorType(op.results[0].type).shape)
-            if len(in_shape) != len(out_shape) or len(in_shape) < 2:
-                return False
-            # 마지막 두 차원 스왑 확인: [...,a,b] → [...,b,a]
-            if in_shape[-2] == out_shape[-1] and in_shape[-1] == out_shape[-2]:
-                # 배치 차원은 동일해야 함
-                return in_shape[:-2] == out_shape[:-2]
+        kind, perm = _identity_layout(op)
+        if kind != "transpose" or len(perm) < 2:
             return False
-        except (RuntimeError, ValueError):
-            return False
+        n = len(perm)
+        return perm == list(range(n - 2)) + [n - 1, n - 2]
 
     def _owner_op(value):
         """value의 producer Operation을 반환. block argument면 None."""
@@ -422,8 +442,9 @@ def rewrite_to_rngd(module: Module):
                     original_weight = producer.operands[0]
                     return (original_weight, absorbed_ops)
 
-                # non-transpose identity generic (expand/reshape) → 흡수하고 계속 따라감
-                if _is_identity_generic(producer):
+                # 단순 복사인 identity generic만 흡수하고 계속 따라감
+                # (확장이나 다른 축의 전치를 흡수하면 그 정보가 IR에서 사라지므로 체인을 끊는다)
+                if _is_identity_generic(producer) and _identity_layout(producer)[0] == "copy":
                     absorbed_ops.append(producer)
                     current = producer.operands[0]  # ins[0]를 따라 올라감
                     continue
@@ -644,23 +665,30 @@ def rewrite_to_rngd(module: Module):
                             result_type = inner.results[0].type
                             inp = inner.operands[0]
 
-                            # shape 비교로 broadcast vs transpose 판별
-                            if in_shape == out_shape:
-                                rngd_op = "rngd.broadcast"
-                                label = "broadcast"
+                            # indexing_maps로 전치·확장·복사 판별 (shape만 보면 축 크기가 같을 때 구분 불가)
+                            kind, info = _identity_layout(inner)
+                            attrs = {
+                                "in_shape": StringAttr.get(str(in_shape), context=inner.context),
+                                "out_shape": StringAttr.get(str(out_shape), context=inner.context),
+                            }
+                            if kind == "transpose":
+                                rngd_op, label = "rngd.transpose", "transpose"
+                                attrs["perm"] = StringAttr.get(str(info), context=inner.context)
+                                detail = f"perm={info}"
+                            elif kind in ("broadcast", "copy"):
+                                rngd_op, label = "rngd.broadcast", "broadcast"
+                                attrs["broadcast_dims"] = StringAttr.get(str(info), context=inner.context)
+                                detail = f"broadcast_dims={info}" if info else "복사"
                             else:
-                                rngd_op = "rngd.transpose"
-                                label = "transpose"
+                                # map을 해석하지 못하면 변환하지 않고 남겨 미분류로 드러나게 한다
+                                continue
 
                             with InsertionPoint(inner):
                                 new_op = Operation.create(
                                     rngd_op,
                                     results=[result_type],
                                     operands=[inp],
-                                    attributes={
-                                        "in_shape": StringAttr.get(str(in_shape), context=inner.context),
-                                        "out_shape": StringAttr.get(str(out_shape), context=inner.context),
-                                    },
+                                    attributes=attrs,
                                     loc=inner.location,
                                 )
                             inner.results[0].replace_all_uses_with(new_op.results[0])
@@ -670,7 +698,7 @@ def rewrite_to_rngd(module: Module):
                                 family="layout", rngd_op=label, shape=out_shape,
                             ))
                             results["ann_after"].append(
-                                (rngd_op, f"{label}: {in_shape} → {out_shape}")
+                                (rngd_op, f"{label}: {in_shape} → {out_shape} ({detail})")
                             )
                         except (RuntimeError, ValueError):
                             pass

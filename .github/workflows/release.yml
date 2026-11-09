@@ -52,6 +52,9 @@ jobs:
               python -m server.cli verify --scale "$s" --json "/out/verify-$s.json"
           done
 
+      - name: 데이터 배치 연산 의미 점검 (Level 1-2 보조 검사)
+        run: docker run --rm "$IMAGE:$VERSION" python -m rngd_pipeline.layout_check
+
       - name: 검증 — 사용자 모델 경로 (SwiGLU FFN)
         run: |
           cat > out/sample_model.py <<'PY'

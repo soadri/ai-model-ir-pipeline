@@ -63,6 +63,9 @@ jobs:
           mkdir -p out && chmod 777 out
           docker run --rm -v "$PWD/out:/out" ai-model-ir-pipeline:ci \
             python -m server.cli verify --scale sim_small --json /out/verify-sim_small.json
+      - name: 데이터 배치 연산 의미 점검 (Level 1-2 보조 검사)
+        run: |
+          docker run --rm ai-model-ir-pipeline:ci python -m rngd_pipeline.layout_check | tee -a "$GITHUB_STEP_SUMMARY"
       - name: 결과 요약
         if: always()
         run: |
