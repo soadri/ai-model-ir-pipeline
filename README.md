@@ -143,7 +143,7 @@ gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.1 -R soadri/ai
 
 - 검증은 Llama 계열 Decoder Layer 구조를 중심으로 진행했습니다. 다른 구조의 모델은 변환 커버리지가 낮을 수 있으며, 미지원 연산은 분석 결과에 그대로 표시됩니다.
 - reduce 계열 연산은 현재 CPU에서 처리합니다.
-- RoPE의 부호 반전 연산은 아직 NPU 특화 IR 연산으로 바꾸지 않고 표준 IR 연산으로 남깁니다. 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#8-현재-한계)에 정리했습니다.
+- RoPE의 부호 반전 연산은 아직 NPU 특화 IR 연산으로 바꾸지 않고 표준 IR 연산으로 남깁니다. 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#9-현재-한계)에 정리했습니다.
 - 표준 IR 변환은 특정 버전의 torch-mlir에 고정되어 있습니다. 최신 torch-mlir의 FX importer 경로로의 이전을 준비하고 있습니다([지원 버전 정책](docs/VERSIONING.md)).
 
 <br>

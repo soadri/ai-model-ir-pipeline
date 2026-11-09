@@ -136,7 +136,8 @@ def analyze(model, x, code: str, started: float) -> dict:
     import torch_mlir
     from torch_mlir.ir import Context, Module
     from rngd_pipeline.e2e_pipeline import (detect_fusion_patterns, extract_dataflow,
-                                            mark_remaining, rewrite_to_rngd)
+                                            insert_optimization_markers, mark_remaining,
+                                            rewrite_to_rngd)
 
     compiled = torch_mlir.compile(model, (x,), output_type="linalg-on-tensors", use_make_fx=True)
     module = Module.parse(str(compiled), Context())
@@ -147,8 +148,10 @@ def analyze(model, x, code: str, started: float) -> dict:
 
     fusion_dict: dict[str, int] = {}
     try:
-        for fg in detect_fusion_patterns(extract_dataflow(module)):
+        fusion_groups = detect_fusion_patterns(extract_dataflow(module))
+        for fg in fusion_groups:
             fusion_dict[fg.name] = fusion_dict.get(fg.name, 0) + 1
+        insert_optimization_markers(module, fusion_groups)
     except Exception:  # noqa: BLE001
         fusion_dict = {}
 

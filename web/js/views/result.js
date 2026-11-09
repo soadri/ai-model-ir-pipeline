@@ -224,12 +224,13 @@ function verifySection(v) {
 
 function highlight(text) {
   const pre = h("pre", { tabindex: "0" });
-  const re = /("?(?:linalg|rngd)\.[\w.]+"?)|(tensor<[^>]*>)|(\b(?:transpose_rhs|op|in_shape|out_shape)\b\s*=)/g;
+  // 속성 이름(최적화 마커 rngd.fusion 등 포함)을 연산 이름보다 먼저 찾아, 연산 색으로 칠해지지 않게 함
+  const re = /((?:rngd\.(?:fusion|kernel_hint|exec)|\b(?:transpose_rhs|op|in_shape|out_shape|perm|broadcast_dims))\s*=)|("?(?:linalg|rngd)\.[\w.]+"?)|(tensor<[^>]*>)/g;
   const s = text || "(표시할 IR이 없습니다)";
   let last = 0, m;
   while ((m = re.exec(s))) {
     pre.append(s.slice(last, m.index));
-    const cls = m[1] ? (m[1].includes("rngd.") ? "k-rngd" : "k-linalg") : m[2] ? "k-type" : "k-attr";
+    const cls = m[1] ? "k-attr" : m[2] ? (m[2].includes("rngd.") ? "k-rngd" : "k-linalg") : "k-type";
     pre.append(h("span", { class: cls }, m[0]));
     last = m.index + m[0].length;
   }

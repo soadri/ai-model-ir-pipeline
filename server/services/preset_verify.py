@@ -217,7 +217,7 @@ def _ir_detail(scale: str):
     try:
         import torch
         from torch_mlir.ir import Context, Module
-        from rngd_pipeline.e2e_pipeline import mark_remaining, rewrite_to_rngd
+        from rngd_pipeline.e2e_pipeline import insert_optimization_markers, mark_remaining, rewrite_to_rngd
         from rngd_pipeline.models import LlamaDecoderLayer
 
         torch.manual_seed(42)
@@ -232,6 +232,7 @@ def _ir_detail(scale: str):
         module = Module.parse(str(compiled), Context())
         linalg_ir = str(module)
         rewrite_to_rngd(module)
+        insert_optimization_markers(module)
         rngd_ir = str(module)
         rngd_ops = [line.strip() for line in rngd_ir.split("\n") if "rngd." in line]
         report = mark_remaining(module)

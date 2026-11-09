@@ -12,7 +12,7 @@ import torch
 import torch_mlir
 from torch_mlir.ir import Context, Module, RankedTensorType
 from .e2e_pipeline import rewrite_to_rngd, _list_op_names, mark_remaining
-from .e2e_pipeline import extract_dataflow, detect_fusion_patterns
+from .e2e_pipeline import extract_dataflow, detect_fusion_patterns, insert_optimization_markers
 from dataclasses import dataclass, field
 from collections import Counter
 import time
@@ -208,6 +208,9 @@ def verify_transform(model, example_input, model_name="model"):
     # fusion
     groups = detect_fusion_patterns(nodes)
     fusion_counter = Counter(g.name for g in groups)
+
+    # 최적화 마커: 식별 결과와 실행 위치를 IR 연산 속성으로 기록 (연산·데이터 흐름은 바꾸지 않음)
+    insert_optimization_markers(module, groups)
 
     # 변환 후 최종 출력 shape 추출
     post_output_shape = _extract_return_shape(module)

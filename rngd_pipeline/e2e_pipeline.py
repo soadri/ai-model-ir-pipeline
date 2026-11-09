@@ -2140,6 +2140,80 @@ def detect_fusion_patterns(nodes: list) -> list:
     return groups
 
 
+# =====================================================================
+# 최적화 마커: 복합 패턴 식별 결과와 실행 위치를 NPU 특화 IR 연산의 속성으로 기록
+# =====================================================================
+
+# 복합 패턴 → 대체할 수 있는 특화 커널 후보
+FUSION_KERNEL_HINTS = {
+    "RMSNORM": "fused_rmsnorm",
+    "SOFTMAX": "fused_softmax",
+    "SILU": "fused_silu",
+    "RESIDUAL": "fused_residual_add",
+    "ATTENTION": "fused_attention",   # QKV 프로젝션, RoPE, Softmax, 출력 프로젝션까지 포함한 블록 단위
+    "FFN": "fused_swiglu_ffn",
+}
+
+# 연동 중인 시뮬레이터 버전(furiosa-opt 0.6)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산
+CPU_FALLBACK_OPS = {"rngd.reduce"}
+
+
+def insert_optimization_markers(module: Module, groups: Optional[list] = None) -> list:
+    """복합 패턴 식별 결과와 실행 위치를 NPU 특화 IR 연산의 속성으로 남긴다.
+
+    - rngd.fusion       : 연산이 속한 복합 패턴 그룹 (예: "[rmsnorm_0]", "[attention_0, softmax_0]")
+    - rngd.kernel_hint  : 그 그룹을 대체할 수 있는 특화 커널 후보 (예: "[fused_rmsnorm]")
+    - rngd.exec         : 현재 실행 위치가 NPU가 아닌 연산 표시 ("cpu_fallback")
+
+    속성 이름에 rngd. 접두사를 붙인 보조 정보이며, 지워도 연산의 의미는 바뀌지 않는다.
+    데이터 흐름 노드(DfNode.idx)는 extract_dataflow와 같은 순서로 rngd.* 연산을 센 번호이므로,
+    같은 방식으로 연산을 모아 그룹의 노드 번호를 원래 연산에 대응시킨다.
+    반환: 사용한 FusionGroup 목록
+    """
+    if groups is None:
+        groups = detect_fusion_patterns(extract_dataflow(module))
+
+    rngd_ops = []
+
+    def walk(op):
+        for region in op.regions:
+            for block in region.blocks:
+                for inner in block.operations:
+                    if str(inner.name).startswith("rngd."):
+                        rngd_ops.append(inner)
+                    else:
+                        walk(inner)
+
+    walk(module.operation)
+
+    membership = [[] for _ in rngd_ops]          # 연산별 (그룹 id, 커널 후보)
+    seen = {}
+    for g in groups:
+        k = seen.get(g.name, 0)
+        seen[g.name] = k + 1
+        gid = f"{g.name.lower()}_{k}"
+        hint = FUSION_KERNEL_HINTS.get(g.name, f"fused_{g.name.lower()}")
+        for idx in g.node_indices:
+            if 0 <= idx < len(rngd_ops):
+                membership[idx].append((gid, hint))
+
+    def fmt(items):
+        out = []
+        for x in items:
+            if x not in out:
+                out.append(x)
+        return "[" + ", ".join(out) + "]"
+
+    for op, members in zip(rngd_ops, membership):
+        ctx = op.context
+        if members:
+            op.attributes["rngd.fusion"] = StringAttr.get(fmt([g for g, _ in members]), context=ctx)
+            op.attributes["rngd.kernel_hint"] = StringAttr.get(fmt([h for _, h in members]), context=ctx)
+        if str(op.name) in CPU_FALLBACK_OPS:
+            op.attributes["rngd.exec"] = StringAttr.get("cpu_fallback", context=ctx)
+    return groups
+
+
 def print_fusion_report(nodes: list, groups: list):
     """fusion 감지 결과 출력"""
     print(f"=== Fusion 패턴 감지 ({len(groups)}개 그룹) ===")
