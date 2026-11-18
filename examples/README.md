@@ -13,7 +13,7 @@
 
 ```bash
 cd examples
-docker run --rm -v "$PWD:/work" ghcr.io/soadri/ai-model-ir-pipeline:0.3 \
+docker run --rm -v "$PWD:/work" ghcr.io/soadri/ai-model-ir-pipeline:0.4 \
   python -m server.cli convert /work/mlp.py
 ```
 
