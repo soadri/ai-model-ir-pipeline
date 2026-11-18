@@ -8,6 +8,8 @@
 - furiosa-opt 0.10에서 커널 실행 방식(런타임)이 정리되어, 커널 함수의 첫 인자를 `&mut Context`에서 `&mut Device`로 바꿨습니다. 커널 본문(fetch, collect, 벡터 엔진, commit 등 단계 호출)은 바뀌지 않았습니다.
 - 커널 시험 코드는 장치를 `Device::new(커널.topology())`로 열고, 오류를 함께 돌려주게 바뀐 전송(`to_hbm`, `to_host`)과 실행(`launch`)의 결과를 꺼내 쓰도록 바꿨습니다.
 - 체험 안내의 이미지 태그를 `0.4`로 바꿨습니다. 기존 `0.3` 태그는 v0.3.0(furiosa-opt 0.6.0)을 그대로 가리킵니다.
+- 소개 페이지의 Upstream 표에서 `cargo-furiosa-opt`를 「사용 안 함」으로 표시합니다. 파이프라인은 커널을 일반 `cargo test`로 빌드·실행해 이 도구를 쓰지 않으며, 실제 NPU 실행으로 넘어갈 때를 위해 최신 버전만 추적합니다.
+- Release 노트 검증 표의 `#숫자`(예: RMSNorm #1)가 Issue 링크로 바뀌지 않게 했습니다.
 
 ## v0.3.0
 

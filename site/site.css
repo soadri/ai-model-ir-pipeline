@@ -283,3 +283,5 @@ img { max-width: 100%; height: auto; }
 
 .stamp code { word-break: break-all; font-size: 13px; }
 @media (max-width: 760px) { .br-wide { display: none; } }
+
+.ver.unused { color: var(--muted, #8A93A7); font-family: inherit; letter-spacing: normal; }

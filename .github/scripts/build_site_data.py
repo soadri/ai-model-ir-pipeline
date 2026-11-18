@@ -80,10 +80,12 @@ def upstream():
     pinned = uw.check_wheels() + [uw.check_crate_pinned()]
     latest = uw.latest_versions()
     pin_of = {"PyTorch (안정)": uw.PINNED["torch"], "torch-mlir (개발 wheel)": uw.PINNED["torch-mlir"],
-              "furiosa-opt-std": uw.PINNED["furiosa-opt-std"], "cargo-furiosa-opt": uw.PINNED["furiosa-opt-std"]}
+              "furiosa-opt-std": uw.PINNED["furiosa-opt-std"]}
+    # 파이프라인이 쓰지 않지만 실제 NPU 실행으로 넘어갈 때 필요할 수 있어 최신 버전만 추적하는 도구
+    unused = {"cargo-furiosa-opt"}
     return {
         "pinned": pinned,
-        "latest": [{"name": k, "pinned": pin_of.get(k), "latest": v} for k, v in latest.items()],
+        "latest": [{"name": k, "pinned": pin_of.get(k), "latest": v, "unused": k in unused} for k, v in latest.items()],
         "ok": all(r["ok"] for r in pinned),
     }
 
