@@ -6,7 +6,7 @@
     RNGD_KERNEL_BACKEND      local | docker            (기본: local)
     RNGD_KERNEL_DIR          Rust 커널 프로젝트 경로      (기본: <repo>/kernels)
     RNGD_KERNEL_TIMEOUT      커널 1회 실행 제한 시간(초)  (기본: 120)
-    RNGD_DOCKER_CONTAINER    docker 백엔드 컨테이너 이름  (기본: furiosa-v06)
+    RNGD_DOCKER_CONTAINER    docker 백엔드 컨테이너 이름  (기본: furiosa-v10)
     RNGD_VAR_DIR             실행 이력·캐시 저장 경로     (기본: <repo>/var)
     RNGD_SCALES              사용할 검증 규모, 쉼표 구분  (기본: sim_small,sim_mid)
 """
@@ -27,13 +27,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 KERNEL_BACKEND = os.environ.get("RNGD_KERNEL_BACKEND", "local").strip().lower()
 
 # 커널 소스가 따르는 furiosa-opt-std API 버전 (백엔드 종류와 무관)
-KERNEL_API = "v06"
+KERNEL_API = "v06"   # 커널 API 세대 식별자 (furiosa-opt 0.6 이후 형식, 0.10에서도 같음). 허용 오차 프로파일 선택에 쓰임
 
 KERNEL_DIR = _env_path("RNGD_KERNEL_DIR", PROJECT_ROOT / "kernels")
 KERNEL_DATA_DIR = KERNEL_DIR / "data"
 KERNEL_TIMEOUT = int(os.environ.get("RNGD_KERNEL_TIMEOUT", "120"))
 
-DOCKER_CONTAINER = os.environ.get("RNGD_DOCKER_CONTAINER", "furiosa-v06")
+DOCKER_CONTAINER = os.environ.get("RNGD_DOCKER_CONTAINER", "furiosa-v10")
 DOCKER_SRC_DIR = "/src"          # 컨테이너에 읽기 전용으로 마운트된 커널 소스
 DOCKER_WORK_DIR = "/workspace"   # 컨테이너 내부 빌드 작업 디렉토리
 

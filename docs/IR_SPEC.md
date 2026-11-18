@@ -184,7 +184,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | Attention | `fused_attention` | Q·K·V 프로젝션, RoPE, 점수 계산, Softmax, 가중합, 출력 프로젝션까지 포함한 블록 |
 | FFN | `fused_swiglu_ffn` | gate·up 프로젝션, SiLU, 곱, down 프로젝션 |
 
-`rngd.exec = "cpu_fallback"`은 연동 중인 시뮬레이터 버전(furiosa-opt 0.6)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산(현재 `rngd.reduce`)에 붙습니다.
+`rngd.exec = "cpu_fallback"`은 연동 중인 시뮬레이터 버전(furiosa-opt 0.10)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산(현재 `rngd.reduce`)에 붙습니다.
 
 ```mlir
 // RMSNorm 안의 축소: 특화 커널 후보이면서 현재는 CPU 대체 처리

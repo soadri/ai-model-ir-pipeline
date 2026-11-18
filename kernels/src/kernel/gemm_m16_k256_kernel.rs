@@ -9,7 +9,7 @@ pub type Lane = m![N % 8];
 
 #[device(chip = 1)]
 pub fn gemm_m16_k256_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     a: &HbmTensor<bf16, Chip, m![M, K]>,
     b: &HbmTensor<bf16, Chip, m![N, K]>,
 ) -> HbmTensor<bf16, Chip, m![M, N]> {

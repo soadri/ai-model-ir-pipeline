@@ -98,7 +98,7 @@ furiosa-opt(`furiosa-opt-std` 0.6)는 cargo가 crates.io에서 받으며, `kerne
 | `RNGD_KERNEL_BACKEND` | 커널 실행 방식. `local`(같은 환경), `docker`(실행 중인 시뮬레이터 컨테이너에 위임) | `local` |
 | `RNGD_KERNEL_DIR` | 커널 프로젝트 경로 | `<저장소>/kernels` |
 | `RNGD_KERNEL_TIMEOUT` | 커널 1회 실행 제한 시간(초) | `120` |
-| `RNGD_DOCKER_CONTAINER` | `docker` 방식에서 사용할 컨테이너 이름 | `furiosa-v06` |
+| `RNGD_DOCKER_CONTAINER` | `docker` 방식에서 사용할 컨테이너 이름 | `furiosa-v10` |
 | `RNGD_VAR_DIR` | 실행 이력과 캐시 저장 경로 | `<저장소>/var` |
 | `RNGD_SCALES` | 사용할 검증 규모(쉼표로 구분) | `sim_small,sim_mid` |
 | `RNGD_HOST`, `RNGD_PORT` | 대시보드 접속 주소 | `127.0.0.1`, `8100` |
@@ -124,7 +124,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"
 # 토큰 파일을 쓰는 예 (컨테이너의 /data 볼륨에 둠)
 echo "nota:<만든 토큰>" >> convert_tokens && chmod 600 convert_tokens
 docker run -d -p 8100:8100 -v "$PWD:/data" -e RNGD_CONVERT_TOKEN_FILE=/data/convert_tokens \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.3
+  ghcr.io/soadri/ai-model-ir-pipeline:0.4
 ```
 
 토큰을 설정한 서버에서는 대시보드의 사용자 모델 화면에 토큰 입력칸이 나타나고, API로 호출할 때는 `X-Access-Token` 헤더에 토큰을 넣습니다.

@@ -19,7 +19,7 @@ mod tests {
 
     #[tokio::test]
     async fn rmsnorm_dim64_tiling() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_rmsnorm_mul_kernel.topology()).unwrap();
         let input = reference_input();
         let expected = reference_expected();
         let eps: f32 = 1e-05;
@@ -30,9 +30,9 @@ mod tests {
             let start = t * 16;
             let chunk: Vec<f32> = input[start..start+16].to_vec();
             let x_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&chunk))
-                .to_hbm(&mut ctx.pdma).await;
-            let xsq_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await;
-            let xsq: Vec<f32> = xsq_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+                .to_hbm(&mut ctx.pdma).await.unwrap();
+            let xsq_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await.unwrap();
+            let xsq: Vec<f32> = xsq_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
             x_sq_all.extend(xsq);
         }
         println!("Step 1 x_sq[0:4]: {:?}", &x_sq_all[..4]);

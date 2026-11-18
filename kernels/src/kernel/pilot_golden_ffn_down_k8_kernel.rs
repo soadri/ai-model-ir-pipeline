@@ -10,7 +10,7 @@ pub type Lane = m![N % 8];
 
 #[device(chip = 1)]
 pub fn pilot_golden_ffn_down_k8_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     a: &HbmTensor<bf16, Chip, m![M, K]>,
     b: &HbmTensor<bf16, Chip, m![N, K]>,
 ) -> HbmTensor<bf16, Chip, m![M, N]> {

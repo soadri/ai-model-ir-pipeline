@@ -27,32 +27,32 @@ mod tests {
 
     #[tokio::test]
     async fn attn_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            load_bf16_bin("data/attn_e2e_x.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/attn_e2e_x.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Step 1: Q = x @ Wq.T (RNGD gemm)
         let wq_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_e2e_wq.bin")).to_hbm(&mut ctx.pdma).await;
-        let q_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wq_hbm)).await;
-        let q: Vec<bf16> = q_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_e2e_wq.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let q_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wq_hbm)).await.unwrap();
+        let q: Vec<bf16> = q_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let q_f32 = bf16_to_f32_vec(&q);
         println!("Step 1 Q[0:4]: {:.4?}", &q_f32[..4]);
 
         // Step 2: K = x @ Wk.T (RNGD gemm)
         let wk_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_e2e_wk.bin")).to_hbm(&mut ctx.pdma).await;
-        let k_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wk_hbm)).await;
-        let k: Vec<bf16> = k_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_e2e_wk.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let k_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wk_hbm)).await.unwrap();
+        let k: Vec<bf16> = k_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let k_f32 = bf16_to_f32_vec(&k);
         println!("Step 2 K[0:4]: {:.4?}", &k_f32[..4]);
 
         // Step 3: V = x @ Wv.T (RNGD gemm)
         let wv_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_e2e_wv.bin")).to_hbm(&mut ctx.pdma).await;
-        let v_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wv_hbm)).await;
-        let v: Vec<bf16> = v_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_e2e_wv.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let v_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wv_hbm)).await.unwrap();
+        let v: Vec<bf16> = v_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let v_f32 = bf16_to_f32_vec(&v);
         println!("Step 3 V[0:4]: {:.4?}", &v_f32[..4]);
 

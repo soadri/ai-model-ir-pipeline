@@ -10,7 +10,7 @@ pub type Slice = m![A / 8 # 256];
 
 #[device(chip = 1)]
 pub fn pilot_e2e_pow2_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     input: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {
     let input_dm = input.to_dm::<Cluster, Slice, m![A % 8]>(&mut ctx.tdma);

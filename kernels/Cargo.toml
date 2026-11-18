@@ -35,7 +35,7 @@ name = "gemm"
 path = "src/gemm.rs"
 
 [dependencies]
-furiosa-opt-std = "0.6"
+furiosa-opt-std = "0.10"
 bytemuck = { version = "1", features = ["derive"] }
 rand = "0.9"
 tokio = { version = "1.29", features = ["rt", "rt-multi-thread", "sync", "macros"] }

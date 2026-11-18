@@ -13,7 +13,7 @@ pub type Slice   = m![A / 8 # 256];
 // Pass 1: x → x³ * 0.044715
 #[device(chip = 1)]
 pub fn gelu_pass1_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     input: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {
     let input_dm = input.to_dm::<Cluster, Slice, m![A % 8]>(&mut ctx.tdma);
@@ -44,7 +44,7 @@ pub fn gelu_pass1_kernel(
 // Pass 2: (x + x³*0.044715) * √(2/π) → tanh
 #[device(chip = 1)]
 pub fn gelu_pass2_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     input:     &HbmTensor<f32, Chip, m![A]>,  // 원본 x
     cubic_term: &HbmTensor<f32, Chip, m![A]>, // x³ * 0.044715
 ) -> HbmTensor<f32, Chip, m![A]> {
@@ -83,7 +83,7 @@ pub fn gelu_pass2_kernel(
 // Pass 3: (1 + tanh) * 0.5 * x
 #[device(chip = 1)]
 pub fn gelu_pass3_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     tanh_val: &HbmTensor<f32, Chip, m![A]>,  // tanh 결과
     input:    &HbmTensor<f32, Chip, m![A]>,  // 원본 x
 ) -> HbmTensor<f32, Chip, m![A]> {

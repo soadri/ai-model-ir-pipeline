@@ -20,16 +20,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_k128_gemm() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(test_k128_gemm_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
 
         let a_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            load_bf16_bin("data/test_k128_a.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/test_k128_a.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
         let b_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/test_k128_b.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/test_k128_b.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(test_k128_gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await;
-        let out: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(test_k128_gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await.unwrap();
+        let out: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let out_f32 = bf16_to_f32(&out);
 
         let exp_f32 = bf16_to_f32(&bf16_vec_from_bin("data/test_k128_expected.bin"));

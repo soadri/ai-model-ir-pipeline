@@ -2162,7 +2162,7 @@ FUSION_KERNEL_HINTS = {
     "FFN": "fused_swiglu_ffn",
 }
 
-# 연동 중인 시뮬레이터 버전(furiosa-opt 0.6)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산
+# 연동 중인 시뮬레이터 버전(furiosa-opt 0.10)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산
 CPU_FALLBACK_OPS = {"rngd.reduce"}
 
 

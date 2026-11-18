@@ -10,7 +10,7 @@ pub type Slice   = m![1 # 256];
 
 #[device(chip = 1)]
 pub fn pilot_golden_intra_reduce_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     input: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![1]> {
     let input_dm: DmTensor<f32, Chip, Cluster, Slice, m![A]> = input.to_dm(&mut ctx.tdma);

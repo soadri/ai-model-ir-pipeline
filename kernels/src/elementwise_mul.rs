@@ -5,13 +5,13 @@ use rand::rngs::SmallRng;
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(elementwise_mul_kernel.topology()).unwrap();
     let mut rng = SmallRng::seed_from_u64(42);
     let lhs = HostTensor::<i32, m![A]>::rand(&mut rng);
     let rhs = HostTensor::<i32, m![A]>::rand(&mut rng);
-    let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await;
-    let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await;
-    let _out_hbm = launch(elementwise_mul_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await;
+    let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await.unwrap();
+    let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out_hbm = launch(elementwise_mul_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await.unwrap();
     println!("Elementwise Mul: kernel ran");
 }
 
@@ -21,23 +21,23 @@ mod tests {
 
     #[tokio::test]
     async fn matches_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(elementwise_mul_kernel.topology()).unwrap();
 
         let mut rng = SmallRng::seed_from_u64(42);
         let lhs = HostTensor::<i32, m![A]>::rand(&mut rng);
         let rhs = HostTensor::<i32, m![A]>::rand(&mut rng);
 
-        let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await;
-        let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await;
+        let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await.unwrap();
+        let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Reference: out[i] = lhs[i] * rhs[i].
         let lhs_buf: Vec<i32> = lhs.into_vec();
         let rhs_buf: Vec<i32> = rhs.into_vec();
         let expected: Vec<i32> = lhs_buf.iter().zip(&rhs_buf).map(|(&a, &b)| a.wrapping_mul(b)).collect();
 
-        let out_hbm = launch(elementwise_mul_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await;
+        let out_hbm = launch(elementwise_mul_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await.unwrap();
 
-        let actual: Vec<i32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+        let actual: Vec<i32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
         for (i, (&e, &a)) in expected.iter().zip(&actual).enumerate() {
             assert_eq!(e, a, "elementwise_mul mismatch at i={i}: expected {e}, actual {a}");
         }

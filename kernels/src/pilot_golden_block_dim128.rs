@@ -59,16 +59,16 @@ async fn main() { println!("Block dim128 end-to-end test"); }
 mod tests {
     use super::*;
 
-    async fn npu_gemm(ctx: &mut Context, x_buf: Vec<u8>, w_buf: Vec<u8>) -> Vec<bf16> {
-        let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(x_buf).to_hbm(&mut ctx.pdma).await;
-        let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(w_buf).to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x_hbm, &w_hbm)).await;
-        out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec()
+    async fn npu_gemm(ctx: &mut Device, x_buf: Vec<u8>, w_buf: Vec<u8>) -> Vec<bf16> {
+        let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(x_buf).to_hbm(&mut ctx.pdma).await.unwrap();
+        let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(w_buf).to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x_hbm, &w_hbm)).await.unwrap();
+        out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec()
     }
 
     /// K-tiled GEMM: x[seq, k_total] × w[n_out, k_total].T
     /// x_tiles: 각 타일의 .bin 경로, w_tiles: 각 타일의 .bin 경로
-    async fn k_tiled_gemm(ctx: &mut Context, x_tiles: &[Vec<u8>], w_tiles: &[Vec<u8>],
+    async fn k_tiled_gemm(ctx: &mut Device, x_tiles: &[Vec<u8>], w_tiles: &[Vec<u8>],
                           seq: usize, n_out: usize) -> Vec<f32> {
         let pad_n: usize = 512;
         let n_tiles = x_tiles.len();
@@ -101,7 +101,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_dim128_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
 
         let dim: usize = 128;

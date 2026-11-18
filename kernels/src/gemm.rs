@@ -5,13 +5,13 @@ use rand::rngs::SmallRng;
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(gemm_kernel.topology()).unwrap();
     let mut rng = SmallRng::seed_from_u64(42);
     let a = HostTensor::<bf16, m![I, K]>::rand(&mut rng);
     let b = HostTensor::<bf16, m![J, K]>::rand(&mut rng);
-    let a_hbm = a.to_hbm(&mut ctx.pdma).await;
-    let b_hbm = b.to_hbm(&mut ctx.pdma).await;
-    let _out_hbm = launch(gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await;
+    let a_hbm = a.to_hbm(&mut ctx.pdma).await.unwrap();
+    let b_hbm = b.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out_hbm = launch(gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await.unwrap();
     println!("GEMM: kernel ran");
 }
 
@@ -21,14 +21,14 @@ mod tests {
     
     #[tokio::test]
     async fn matches_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(gemm_kernel.topology()).unwrap();
 
         let mut rng = SmallRng::seed_from_u64(42);
         let a = HostTensor::<bf16, m![I, K]>::rand(&mut rng);
         let b = HostTensor::<bf16, m![J, K]>::rand(&mut rng);
 
-        let a_hbm = a.to_hbm(&mut ctx.pdma).await;
-        let b_hbm = b.to_hbm(&mut ctx.pdma).await;
+        let a_hbm = a.to_hbm(&mut ctx.pdma).await.unwrap();
+        let b_hbm = b.to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Reference: C[i, j] = sum_k A[i, k] * B[j, k] in f32, rounded to bf16.
         let a_buf: Vec<bf16> = a.into_vec();
@@ -47,9 +47,9 @@ mod tests {
             })
             .collect();
 
-        let out_hbm = launch(gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await;
+        let out_hbm = launch(gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await.unwrap();
 
-        let actual: Vec<bf16> = out_hbm.to_host::<m![I, J]>(&mut ctx.pdma).await.into_vec();
+        let actual: Vec<bf16> = out_hbm.to_host::<m![I, J]>(&mut ctx.pdma).await.unwrap().into_vec();
         for (idx, (&e, &av)) in expected.iter().zip(&actual).enumerate() {
             let diff = (f32::from(av) - f32::from(e)).abs();
             let tol = (0.05 * f32::from(e).abs()).max(1.0);

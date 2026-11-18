@@ -24,7 +24,9 @@ def main():
            "", "| Level 3 모듈 | 상대 오차 | 판정 |", "|:--|--:|:--:|"]
     for c in l3.get("checks", []):
         rel = c.get("rel_err_pct")
-        out.append(f"| {c.get('module')} | {f'{rel:.4g}%' if rel is not None else '–'} | {mark(c.get('passed'))} |")
+        # GitHub가 '#숫자'를 Issue 번호로 링크하지 않도록 '#'과 숫자 사이에 보이지 않는 문자를 넣음
+        name = str(c.get('module') or '').replace('#', '#\u2060')
+        out.append(f"| {name} | {f'{rel:.4g}%' if rel is not None else '–'} | {mark(c.get('passed'))} |")
     print("\n".join(out))
     ok = l12.get("all_passed") and l3.get("all_passed")
     sys.exit(0 if ok else 1)

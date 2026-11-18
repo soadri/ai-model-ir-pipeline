@@ -26,14 +26,14 @@ mod tests {
 
     #[tokio::test]
     async fn custom_pow2() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_rmsnorm_mul_kernel.topology()).unwrap();
         let input = load_f32_bin("data/custom_elem_input.bin");
         let expected = load_f32_bin("data/custom_elem_pow2_expected.bin");
 
         let x_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&input))
-            .to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await;
-        let result: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await.unwrap();
+        let result: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         println!("=== custom pow2 ===");
         let mut max_diff: f32 = 0.0;
@@ -50,14 +50,14 @@ mod tests {
 
     #[tokio::test]
     async fn custom_rsqrt() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_rmsnorm_mul_kernel.topology()).unwrap();
         let input = load_f32_bin("data/custom_elem_rsqrt_input.bin");
         let expected = load_f32_bin("data/custom_elem_rsqrt_expected.bin");
 
         let x_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&input))
-            .to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_rmsnorm_rsqrt_kernel, (&mut ctx, &x_hbm)).await;
-        let result: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_rmsnorm_rsqrt_kernel, (&mut ctx, &x_hbm)).await.unwrap();
+        let result: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         println!("=== custom rsqrt ===");
         let mut max_diff: f32 = 0.0;
@@ -74,17 +74,17 @@ mod tests {
 
     #[tokio::test]
     async fn custom_xnorm() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_rmsnorm_mul_kernel.topology()).unwrap();
         let x = load_f32_bin("data/custom_elem_xnorm_x.bin");
         let rsqrt = load_f32_bin("data/custom_elem_xnorm_rsqrt.bin");
         let expected = load_f32_bin("data/custom_elem_xnorm_expected.bin");
 
         let x_hbm = HostTensor::<f32, m![AX]>::from_buf(to_bytes(&x))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let r_hbm = HostTensor::<f32, m![AX]>::from_buf(to_bytes(&rsqrt))
-            .to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_rmsnorm_xnorm_kernel, (&mut ctx, &x_hbm, &r_hbm)).await;
-        let result: Vec<f32> = out_hbm.to_host::<m![AX]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_rmsnorm_xnorm_kernel, (&mut ctx, &x_hbm, &r_hbm)).await.unwrap();
+        let result: Vec<f32> = out_hbm.to_host::<m![AX]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         println!("=== custom xnorm ===");
         let mut max_diff: f32 = 0.0;

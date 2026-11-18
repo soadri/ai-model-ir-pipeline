@@ -10,7 +10,7 @@ pub type Slice   = m![1 # 256];
 // Pass 1: sum(x²)
 #[device(chip = 1)]
 pub fn reduce_sum_sq_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     input: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![1]> {
     let input_dm: DmTensor<f32, Chip, Cluster, Slice, m![A]> = input.to_dm(&mut ctx.tdma);
@@ -43,7 +43,7 @@ pub fn reduce_sum_sq_kernel(
 // Pass 2: scale by inv_n
 #[device(chip = 1)]
 pub fn scale_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     sum_sq: &HbmTensor<f32, Chip, m![A]>,
     inv_n:  &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {

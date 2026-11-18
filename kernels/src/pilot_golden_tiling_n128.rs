@@ -21,21 +21,21 @@ mod tests {
 
     #[tokio::test]
     async fn tiling_n128() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
             load_bf16_bin("data/tiling_n_x.bin"))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
 
         let mut tiles: Vec<Vec<f32>> = Vec::new();
 
         for i in 0..4u32 {
             let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
                 load_bf16_bin(&format!("data/tiling_n_w{i}.bin")))
-                .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+                .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
 
-            let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &w_hbm)).await;
-            let tile: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &w_hbm)).await.unwrap();
+            let tile: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
             tiles.push(bf16_to_f32(&tile));
         }
 

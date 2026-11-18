@@ -16,22 +16,22 @@ mod tests {
 
     #[tokio::test]
     async fn matches_actual_pytorch_output() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(reduce_sum_sq_kernel.topology()).unwrap();
 
         let input = HostTensor::<f32, m![A]>::from_buf(to_bytes(&reference_input()));
-        let input_hbm = input.to_hbm(&mut ctx.pdma).await;
+        let input_hbm = input.to_hbm(&mut ctx.pdma).await.unwrap();
 
         let inv_n_data: Vec<f32> = vec![1.0 / A::SIZE as f32; 4];
         let inv_n = HostTensor::<f32, m![4]>::from_buf(to_bytes(&inv_n_data));
-        let inv_n_hbm = inv_n.to_hbm(&mut ctx.pdma).await;
+        let inv_n_hbm = inv_n.to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Pass 1
-        let sum_sq_hbm = launch(reduce_sum_sq_kernel, (&mut ctx, &input_hbm)).await;
+        let sum_sq_hbm = launch(reduce_sum_sq_kernel, (&mut ctx, &input_hbm)).await.unwrap();
 
         // Pass 2
-        let result_hbm = launch(scale_kernel, (&mut ctx, &sum_sq_hbm, &inv_n_hbm)).await;
+        let result_hbm = launch(scale_kernel, (&mut ctx, &sum_sq_hbm, &inv_n_hbm)).await.unwrap();
 
-        let actual: Vec<f32> = result_hbm.to_host::<m![4]>(&mut ctx.pdma).await.into_vec();
+        let actual: Vec<f32> = result_hbm.to_host::<m![4]>(&mut ctx.pdma).await.unwrap().into_vec();
         let expected = reference_expected();
 
         println!("=== mean(x²) 결과 ===");

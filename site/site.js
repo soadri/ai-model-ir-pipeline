@@ -282,8 +282,8 @@ function upstreamBlock(up) {
         h("thead", {}, h("tr", {}, h("th", {}, "구성 요소"), h("th", {}, "고정"), h("th", {}, "최신"))),
         h("tbody", {}, up.latest.map((r) => h("tr", {},
           h("td", { style: "font-family:var(--sans);font-size:15px" }, r.name),
-          h("td", { class: "ver" }, r.pinned || "–"),
-          h("td", { class: `ver${r.pinned && r.latest !== r.pinned ? " newer" : ""}` }, r.latest))))))));
+          h("td", { class: `ver${r.unused ? " unused" : ""}` }, r.unused ? "사용 안 함" : (r.pinned || "–")),
+          h("td", { class: `ver${!r.unused && r.pinned && r.latest !== r.pinned ? " newer" : ""}` }, r.latest))))))));
 }
 
 async function initRecord() {

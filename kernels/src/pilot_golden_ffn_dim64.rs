@@ -27,24 +27,24 @@ mod tests {
 
     // K-tiled gemm: 2 tiles (K=128 → K=64 × 2), RNGD + CPU accumulate
     async fn k_tiled_gemm(
-        ctx: &mut Context,
+        ctx: &mut Device,
         x0_bin: &str, x1_bin: &str,
         w0_bin: &str, w1_bin: &str,
     ) -> Vec<f32> {
         let x0 = HostTensor::<bf16, m![M, K]>::from_buf(load_bf16_bin(x0_bin))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
         let w0 = HostTensor::<bf16, m![N, K]>::from_buf(load_bf16_bin(w0_bin))
-            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
-        let p0_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x0, &w0)).await;
-        let p0: Vec<bf16> = p0_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
+        let p0_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x0, &w0)).await.unwrap();
+        let p0: Vec<bf16> = p0_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let p0_f32 = bf16_to_f32(&p0);
 
         let x1 = HostTensor::<bf16, m![M, K]>::from_buf(load_bf16_bin(x1_bin))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
         let w1 = HostTensor::<bf16, m![N, K]>::from_buf(load_bf16_bin(w1_bin))
-            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
-        let p1_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x1, &w1)).await;
-        let p1: Vec<bf16> = p1_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
+        let p1_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x1, &w1)).await.unwrap();
+        let p1: Vec<bf16> = p1_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let p1_f32 = bf16_to_f32(&p1);
 
         p0_f32.iter().zip(p1_f32.iter()).map(|(a, b)| a + b).collect()
@@ -52,7 +52,7 @@ mod tests {
 
     #[tokio::test]
     async fn ffn_dim64_tiling() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         // === Step 1: gate = K-tiled gemm (RNGD × 2 + CPU add) ===
         let gate_f32 = k_tiled_gemm(&mut ctx,
@@ -113,12 +113,12 @@ mod tests {
             }
 
             let h_hbm = HostTensor::<bf16, m![M, K]>::from_buf(h_tile)
-                .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+                .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
             let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(w_tile)
-                .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+                .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
 
-            let p_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &h_hbm, &w_hbm)).await;
-            let p: Vec<bf16> = p_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            let p_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &h_hbm, &w_hbm)).await.unwrap();
+            let p: Vec<bf16> = p_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
             let p_f32 = bf16_to_f32(&p);
 
             for (a, t) in down_acc.iter_mut().zip(p_f32.iter()) {

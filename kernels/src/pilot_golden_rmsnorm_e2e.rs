@@ -22,18 +22,18 @@ mod tests {
 
     #[tokio::test]
     async fn rmsnorm_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_rmsnorm_mul_kernel.topology()).unwrap();
 
         let x = reference_input();
         let expected = reference_expected();
 
         let x_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&x))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Step 1: x_sq = x * x (RNGD)
-        let xsq_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await;
+        let xsq_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await.unwrap();
         let x_sq: Vec<f32> = xsq_hbm
-            .to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+            .to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 1 x_sq[0:4]: {:?}", &x_sq[..4]);
 
         // Step 2: mean_sq = sum(x_sq) / N (CPU fallback)
@@ -45,23 +45,23 @@ mod tests {
         // Step 3: rsqrt (RNGD)
         let rms_vec: Vec<f32> = vec![(mean_sq + eps); A::SIZE];
         let rms_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&rms_vec))
-            .to_hbm(&mut ctx.pdma).await;
-        let rsqrt_hbm = launch(pilot_golden_rmsnorm_rsqrt_kernel, (&mut ctx, &rms_hbm)).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let rsqrt_hbm = launch(pilot_golden_rmsnorm_rsqrt_kernel, (&mut ctx, &rms_hbm)).await.unwrap();
         let rsqrt_rngd: Vec<f32> = rsqrt_hbm
-            .to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+            .to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 3 rsqrt RNGD:{:.6}  CPU:{:.6}", rsqrt_rngd[0], rsqrt_val);
 
         // Step 4: x_norm = x * rsqrt_val (RNGD)
         use rngd_tcp_kernel_dev::kernel::pilot_golden_rmsnorm_xnorm_kernel::A as AX;
         let x_hbm2 = HostTensor::<f32, m![AX]>::from_buf(to_bytes(&x))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let rsqrt_hbm2 = HostTensor::<f32, m![AX]>::from_buf(to_bytes(&rsqrt_rngd))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let xnorm_hbm = launch(
             pilot_golden_rmsnorm_xnorm_kernel, (&mut ctx, &x_hbm2, &rsqrt_hbm2)
-        ).await;
+        ).await.unwrap();
         let x_norm: Vec<f32> = xnorm_hbm
-            .to_host::<m![AX]>(&mut ctx.pdma).await.into_vec();
+            .to_host::<m![AX]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 4 x_norm[0:4]: {:?}", &x_norm[..4]);
 
         // 검증

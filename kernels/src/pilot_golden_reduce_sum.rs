@@ -22,7 +22,7 @@ mod tests {
 
     #[tokio::test]
     async fn reduce_sum_a16() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_add_a8_kernel.topology()).unwrap();
 
         // 테스트 입력: 1~16
         let x: Vec<f32> = (1..=16).map(|v| v as f32).collect();
@@ -37,12 +37,12 @@ mod tests {
         let hi: Vec<f32> = x[8..16].to_vec();
 
         let lo_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&lo))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let hi_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&hi))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let p1_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &lo_hbm, &hi_hbm)).await;
-        let p1: Vec<f32> = p1_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        let p1_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &lo_hbm, &hi_hbm)).await.unwrap();
+        let p1: Vec<f32> = p1_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 1 [8]: {:?}", &p1);
 
         // Step 2: p1[0:4] + p1[4:8] → partial[4]
@@ -55,12 +55,12 @@ mod tests {
         p1_hi_pad.extend(vec![0.0f32; 4]);
 
         let p2_lo_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&p1_lo_pad))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let p2_hi_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&p1_hi_pad))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let p2_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &p2_lo_hbm, &p2_hi_hbm)).await;
-        let p2: Vec<f32> = p2_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        let p2_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &p2_lo_hbm, &p2_hi_hbm)).await.unwrap();
+        let p2: Vec<f32> = p2_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 2 [4]: {:?}", &p2[..4]);
 
         // Step 3: p2[0:2] + p2[2:4] → partial[2]
@@ -68,12 +68,12 @@ mod tests {
         let mut p3_hi = vec![p2[2], p2[3], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
         let p3_lo_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&p3_lo))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let p3_hi_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&p3_hi))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let p3_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &p3_lo_hbm, &p3_hi_hbm)).await;
-        let p3: Vec<f32> = p3_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        let p3_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &p3_lo_hbm, &p3_hi_hbm)).await.unwrap();
+        let p3: Vec<f32> = p3_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 3 [2]: {:?}", &p3[..2]);
 
         // Step 4: p3[0] + p3[1] → scalar
@@ -81,12 +81,12 @@ mod tests {
         let mut p4_hi = vec![p3[1], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
         let p4_lo_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&p4_lo))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let p4_hi_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&p4_hi))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let p4_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &p4_lo_hbm, &p4_hi_hbm)).await;
-        let p4: Vec<f32> = p4_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        let p4_hbm = launch(pilot_golden_add_a8_kernel, (&mut ctx, &p4_lo_hbm, &p4_hi_hbm)).await.unwrap();
+        let p4: Vec<f32> = p4_hbm.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         let actual_sum = p4[0];
         let actual_mean = actual_sum / 16.0;

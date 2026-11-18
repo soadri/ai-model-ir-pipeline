@@ -13,7 +13,7 @@ mod tests {
 
     #[tokio::test]
     async fn intra_slice_reduce_sum() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_intra_reduce_kernel.topology()).unwrap();
 
         // 테스트 입력: 1~16
         let x: Vec<f32> = (1..=16).map(|v| v as f32).collect();
@@ -22,10 +22,10 @@ mod tests {
         println!("기대 sum: {}", expected_sum);
 
         let x_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&x))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(pilot_golden_intra_reduce_kernel, (&mut ctx, &x_hbm)).await;
-        let result: Vec<f32> = out_hbm.to_host::<m![R]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(pilot_golden_intra_reduce_kernel, (&mut ctx, &x_hbm)).await.unwrap();
+        let result: Vec<f32> = out_hbm.to_host::<m![R]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         println!("실제 sum: {}", result[0]);
         println!("오차:     {}", (expected_sum - result[0]).abs());

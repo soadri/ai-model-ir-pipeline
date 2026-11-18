@@ -42,21 +42,21 @@ mod tests {
     use super::*;
     const PN: usize = 512;
 
-    async fn npu_gemm_from_hbm(ctx: &mut Context,
+    async fn npu_gemm_from_hbm(ctx: &mut Device,
         x_hbm: &HbmTensor<bf16, m![1], m![M, K]>,
         w_buf: Vec<u8>) -> Vec<bf16> {
-        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w_buf).to_hbm(&mut ctx.pdma).await;
-        let oh = launch(pilot_golden_ffn_gate_kernel, (ctx, x_hbm, &wh)).await;
-        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.into_vec()
+        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w_buf).to_hbm(&mut ctx.pdma).await.unwrap();
+        let oh = launch(pilot_golden_ffn_gate_kernel, (ctx, x_hbm, &wh)).await.unwrap();
+        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.unwrap().into_vec()
     }
 
     /// 최적화: 입력 HBM 텐서를 K-타일마다 1번만 업로드
-    async fn k_tiled_gemm_opt(ctx: &mut Context, x_bufs: &[Vec<u8>], w_bufs: &[Vec<u8>],
+    async fn k_tiled_gemm_opt(ctx: &mut Device, x_bufs: &[Vec<u8>], w_bufs: &[Vec<u8>],
                               seq: usize, nout: usize) -> Vec<f32> {
         let mut acc = vec![0.0f32; seq*nout];
         for t in 0..x_bufs.len() {
             let xh = HostTensor::<bf16, m![M,K]>::from_buf(x_bufs[t].clone())
-                .to_hbm(&mut ctx.pdma).await;
+                .to_hbm(&mut ctx.pdma).await.unwrap();
             let raw = npu_gemm_from_hbm(ctx, &xh, w_bufs[t].clone()).await;
             let p = bf16_to_f32(&raw);
             for s in 0..seq { for d in 0..nout { acc[s*nout+d] += p[s*PN+d]; } }
@@ -65,7 +65,7 @@ mod tests {
     }
 
     /// 최적화: K+N 타일링에서 입력 HBM을 N-타일 간 재사용
-    async fn kn_tiled_gemm_opt(ctx: &mut Context, input: &[f32], seq: usize, in_dim: usize,
+    async fn kn_tiled_gemm_opt(ctx: &mut Device, input: &[f32], seq: usize, in_dim: usize,
                                prefix: &str, n_out: usize, kt: usize, n_tiles: usize) -> Vec<f32> {
         // Step 1: 입력 K-타일을 HBM에 1번만 업로드
         let x_hbms: Vec<_> = (0..kt).map(|t| {
@@ -81,7 +81,7 @@ mod tests {
         let mut x_hbm_tensors = Vec::with_capacity(kt);
         for buf in &x_hbms {
             let hbm = HostTensor::<bf16, m![M,K]>::from_buf(buf.clone())
-                .to_hbm(&mut ctx.pdma).await;
+                .to_hbm(&mut ctx.pdma).await.unwrap();
             x_hbm_tensors.push(hbm);
         }
 
@@ -108,7 +108,7 @@ mod tests {
     }
 
     /// K-only (N≤512): prefix_t{kt}
-    async fn k_only_tiled_opt(ctx: &mut Context, input: &[f32], seq: usize, in_dim: usize,
+    async fn k_only_tiled_opt(ctx: &mut Device, input: &[f32], seq: usize, in_dim: usize,
                               prefix: &str, n_out: usize, kt: usize) -> Vec<f32> {
         let x_bufs: Vec<Vec<u8>> = (0..kt).map(|t| {
             let st = t*64;
@@ -145,7 +145,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_dim2048_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
         let dim=2048usize; let hidden=4096usize; let nh=8usize; let nkv=2usize;
         let hd=256usize; let seq=8usize; let nrep=nh/nkv; let eps=1e-5f32;

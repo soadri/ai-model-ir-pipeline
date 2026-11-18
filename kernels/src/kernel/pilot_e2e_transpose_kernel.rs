@@ -10,7 +10,7 @@ pub type Slice   = m![M / 2, N / 16];  // 16 * 16 = 256 ✅
 
 #[device(chip = 1)]
 pub fn pilot_e2e_transpose_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     input: &HbmTensor<bf16, Chip, m![M, N]>,
 ) -> HbmTensor<bf16, Chip, m![N, M]> {
     let input_dm = input.to_dm::<Cluster, Slice, m![M % 2, N % 16]>(&mut ctx.tdma);

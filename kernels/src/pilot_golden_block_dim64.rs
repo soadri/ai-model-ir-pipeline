@@ -75,18 +75,18 @@ async fn main() { println!("Block dim64 end-to-end test (0.6)"); }
 mod tests {
     use super::*;
 
-    async fn npu_gemm(ctx: &mut Context, x_buf: Vec<u8>, w_buf: Vec<u8>) -> Vec<bf16> {
+    async fn npu_gemm(ctx: &mut Device, x_buf: Vec<u8>, w_buf: Vec<u8>) -> Vec<bf16> {
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(x_buf)
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(w_buf)
-            .to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x_hbm, &w_hbm)).await;
-        out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec()
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x_hbm, &w_hbm)).await.unwrap();
+        out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec()
     }
 
     #[tokio::test]
     async fn block_dim64_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
 
         let dim: usize = 64;

@@ -8,7 +8,7 @@ npu_direct_verify.py — IR 변환 + NPU 연산 정합성 직접 검증 프레�
 
 프로파일 기반 설계:
   검증 대상 모델의 shape/파라미터를 프로파일로 분리하여,
-  furiosa-opt 0.6 시뮬레이터 검증 → 타일링 확장 → Llama-3.1 8B 실제 스케일까지
+  furiosa-opt 시뮬레이터 검증 → 타일링 확장 → Llama-3.1 8B 실제 스케일까지
   프레임워크 수정 없이 확장 가능.
 """
 
@@ -36,7 +36,7 @@ KERNEL_PROJECT = config.KERNEL_DIR
 
 VERIFY_PROFILES = {
     "sim_small": {
-        "desc": "furiosa-opt 0.6 시뮬레이터 검증 — gemm M=512,K=64,N=512 현실적 규모",
+        "desc": "furiosa-opt 시뮬레이터 검증 — gemm M=512,K=64,N=512 현실적 규모",
         "dim": 16, "hidden": 8, "n_heads": 1, "n_kv_heads": 1,
         "head_dim": 16, "seq_len": 8, "rms_eps": 1e-5,
         "kernels": {

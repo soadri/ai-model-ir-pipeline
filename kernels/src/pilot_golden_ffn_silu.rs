@@ -16,13 +16,13 @@ mod tests {
 
     #[tokio::test]
     async fn matches_pytorch_golden_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_silu_small_kernel.topology()).unwrap();
 
         let input = HostTensor::<f32, m![A]>::from_buf(to_bytes(&reference_input()));
-        let input_hbm = input.to_hbm(&mut ctx.pdma).await;
+        let input_hbm = input.to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(pilot_golden_silu_small_kernel, (&mut ctx, &input_hbm)).await;
-        let actual: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(pilot_golden_silu_small_kernel, (&mut ctx, &input_hbm)).await.unwrap();
+        let actual: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
         let expected = reference_expected();
 
         println!("=== FFN SiLU — Golden Reference (0.6) ===");

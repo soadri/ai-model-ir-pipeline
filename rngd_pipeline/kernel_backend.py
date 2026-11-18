@@ -176,7 +176,7 @@ def _parse_result(r: subprocess.CompletedProcess) -> tuple[bool, str, dict]:
 
 def backend_info() -> dict:
     """현재 커널 실행 환경 요약 (대시보드 표시용)."""
-    info = {"backend": KERNEL_BACKEND, "kernel_api": KERNEL_API, "simulator": "furiosa-opt 0.6"}
+    info = {"backend": KERNEL_BACKEND, "kernel_api": KERNEL_API, "simulator": "furiosa-opt 0.10"}
     if KERNEL_BACKEND == "local":
         info["prebuilt_kernels"] = len(_prebuilt())
     if KERNEL_BACKEND == "docker":
