@@ -27,7 +27,7 @@ mod tests {
 
     #[tokio::test]
     async fn attn_dim64_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
 
         // dim=64, n_heads=8, n_kv_heads=2, head_dim=8, seq=8
@@ -40,27 +40,27 @@ mod tests {
 
         // Step 1: Q = x @ Wq.T  [512,64] × [512,64].T → [512,512]
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            load_bf16_bin("data/attn_dim64_x.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/attn_dim64_x.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
         let wq_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_dim64_wq.bin")).to_hbm(&mut ctx.pdma).await;
-        let q_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wq_hbm)).await;
-        let q_all: Vec<bf16> = q_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_dim64_wq.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let q_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wq_hbm)).await.unwrap();
+        let q_all: Vec<bf16> = q_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let q_f32 = bf16_to_f32_vec(&q_all);
         println!("Step 1: Q projection done (NPU GEMM). Q[0:4]={:.4?}", &q_f32[..4]);
 
         // Step 2: K = x @ Wk.T  (Wk=[16,64], padded to [512,64])
         let wk_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_dim64_wk.bin")).to_hbm(&mut ctx.pdma).await;
-        let k_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wk_hbm)).await;
-        let k_all: Vec<bf16> = k_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_dim64_wk.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let k_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wk_hbm)).await.unwrap();
+        let k_all: Vec<bf16> = k_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let k_f32 = bf16_to_f32_vec(&k_all);
         println!("Step 2: K projection done (NPU GEMM). K[0:4]={:.4?}", &k_f32[..4]);
 
         // Step 3: V = x @ Wv.T
         let wv_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_dim64_wv.bin")).to_hbm(&mut ctx.pdma).await;
-        let v_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wv_hbm)).await;
-        let v_all: Vec<bf16> = v_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_dim64_wv.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let v_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wv_hbm)).await.unwrap();
+        let v_all: Vec<bf16> = v_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let v_f32 = bf16_to_f32_vec(&v_all);
         println!("Step 3: V projection done (NPU GEMM). V[0:4]={:.4?}", &v_f32[..4]);
 
@@ -148,11 +148,11 @@ mod tests {
         }
 
         let ao_hbm = HostTensor::<bf16, m![M, K]>::from_buf(attn_out_padded)
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let wo_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/attn_dim64_wo.bin")).to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &ao_hbm, &wo_hbm)).await;
-        let out_all: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+            load_bf16_bin("data/attn_dim64_wo.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &ao_hbm, &wo_hbm)).await.unwrap();
+        let out_all: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let out_f32 = bf16_to_f32_vec(&out_all);
 
         // Extract [seq, dim] from [M, N]

@@ -40,13 +40,13 @@ async fn main() { println!("Block dim256 E2E"); }
 #[cfg(test)]
 mod tests {
     use super::*;
-    async fn npu_gemm(ctx: &mut Context, x: Vec<u8>, w: Vec<u8>) -> Vec<bf16> {
-        let xh = HostTensor::<bf16, m![M,K]>::from_buf(x).to_hbm(&mut ctx.pdma).await;
-        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w).to_hbm(&mut ctx.pdma).await;
-        let oh = launch(pilot_golden_ffn_gate_kernel, (ctx, &xh, &wh)).await;
-        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.into_vec()
+    async fn npu_gemm(ctx: &mut Device, x: Vec<u8>, w: Vec<u8>) -> Vec<bf16> {
+        let xh = HostTensor::<bf16, m![M,K]>::from_buf(x).to_hbm(&mut ctx.pdma).await.unwrap();
+        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w).to_hbm(&mut ctx.pdma).await.unwrap();
+        let oh = launch(pilot_golden_ffn_gate_kernel, (ctx, &xh, &wh)).await.unwrap();
+        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.unwrap().into_vec()
     }
-    async fn k_tiled_gemm(ctx: &mut Context, xt: &[Vec<u8>], wt: &[Vec<u8>], seq: usize, nout: usize) -> Vec<f32> {
+    async fn k_tiled_gemm(ctx: &mut Device, xt: &[Vec<u8>], wt: &[Vec<u8>], seq: usize, nout: usize) -> Vec<f32> {
         let pn = 512usize; let nt = xt.len();
         let mut acc = vec![0.0f32; seq*nout];
         for t in 0..nt {
@@ -66,7 +66,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_dim256_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
         let dim=256; let hidden=512; let nh=8; let nkv=2; let hd=32; let seq=8;
         let nrep = nh/nkv; let eps=1e-5f32; let kvd = nkv*hd; let kt = dim/64;

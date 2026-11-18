@@ -20,14 +20,14 @@ mod tests {
 
     #[tokio::test]
     async fn custom_silu() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_silu_small_kernel.topology()).unwrap();
         let input = load_f32_bin("data/custom_silu_input.bin");
         let expected = load_f32_bin("data/custom_silu_expected.bin");
 
         let x_hbm = HostTensor::<f32, m![A]>::from_buf(to_bytes(&input))
-            .to_hbm(&mut ctx.pdma).await;
-        let out_hbm = launch(pilot_golden_silu_small_kernel, (&mut ctx, &x_hbm)).await;
-        let result: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let out_hbm = launch(pilot_golden_silu_small_kernel, (&mut ctx, &x_hbm)).await.unwrap();
+        let result: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         println!("=== custom silu ===");
         let mut max_diff: f32 = 0.0;

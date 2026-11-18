@@ -21,30 +21,30 @@ mod tests {
 
     #[tokio::test]
     async fn tiling_k() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         // K=128 → K=64 × 2 tiles
         let x0_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
             load_bf16_bin("data/tiling_k_x0.bin"))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
         let x1_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
             load_bf16_bin("data/tiling_k_x1.bin"))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
         let w0_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
             load_bf16_bin("data/tiling_k_w0.bin"))
-            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
         let w1_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
             load_bf16_bin("data/tiling_k_w1.bin"))
-            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
 
         // partial_0 = x[:, :64] @ w[:, :64].T
-        let p0_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x0_hbm, &w0_hbm)).await;
-        let p0: Vec<bf16> = p0_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let p0_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x0_hbm, &w0_hbm)).await.unwrap();
+        let p0: Vec<bf16> = p0_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let p0_f32 = bf16_to_f32(&p0);
 
         // partial_1 = x[:, 64:] @ w[:, 64:].T
-        let p1_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x1_hbm, &w1_hbm)).await;
-        let p1: Vec<bf16> = p1_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let p1_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x1_hbm, &w1_hbm)).await.unwrap();
+        let p1: Vec<bf16> = p1_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let p1_f32 = bf16_to_f32(&p1);
 
         // accumulate (CPU)

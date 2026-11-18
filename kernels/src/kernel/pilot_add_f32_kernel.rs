@@ -14,7 +14,7 @@ pub type Slice = m![A / 8 # 256];
 // confirmed=False — 아래 컴파일/테스트로 실증 필요.
 #[device(chip = 1)]
 pub fn pilot_add_f32_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     lhs: &HbmTensor<f32, Chip, m![A]>,
     rhs: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {

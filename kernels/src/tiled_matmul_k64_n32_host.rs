@@ -17,7 +17,7 @@ use rngd_tcp_kernel_dev::kernel::pilot_golden_ffn_gate_kernel::{
 /// 타일링된 matmul: x[1, 64] × w[32, 64] → out[1, 32]
 /// w_tiles: [n_tile_idx][k_tile_idx] 순서로 bf16 데이터
 pub async fn tiled_matmul_64x32(
-    ctx: &mut Context,
+    ctx: &mut Device,
     x_tiles: &[Vec<bf16>],              // K 방향 분할 입력 [4개, 각 K=16]
     w_tiles: &[Vec<Vec<bf16>>],         // [N타일][K타일] 가중치
 ) -> Vec<f32> {
@@ -29,13 +29,13 @@ pub async fn tiled_matmul_64x32(
 
         for k in 0..4 {
             let x_hbm = HostTensor::<bf16, m![V, GM, GK]>::from_buf(x_tiles[k].clone())
-                .to_hbm(&mut ctx.pdma).await;
+                .to_hbm(&mut ctx.pdma).await.unwrap();
             let w_hbm = HostTensor::<bf16, m![V, GN, GK]>::from_buf(w_tiles[n][k].clone())
-                .to_hbm(&mut ctx.pdma).await;
+                .to_hbm(&mut ctx.pdma).await.unwrap();
 
-            let p_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x_hbm, &w_hbm)).await;
+            let p_hbm = launch(pilot_golden_ffn_gate_kernel, (ctx, &x_hbm, &w_hbm)).await.unwrap();
             let p_f32: Vec<f32> = p_hbm
-                .to_host::<m![V, GM, GN]>(&mut ctx.pdma).await.into_vec()
+                .to_host::<m![V, GM, GN]>(&mut ctx.pdma).await.unwrap().into_vec()
                 .iter().map(|v: &bf16| v.to_f32()).collect();
 
             // f32 accumulate (CPU — 정밀도 유지)
@@ -73,7 +73,7 @@ mod tests {
 
     #[tokio::test]
     async fn tiled_matmul_k64_n32_test() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         let mut x_tiles: Vec<Vec<bf16>> = vec![vec![]; 4];
         let mut w_tiles: Vec<Vec<Vec<bf16>>> = vec![vec![vec![]; 4]; 4];

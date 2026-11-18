@@ -11,7 +11,7 @@ pub type Lane = m![1];
 
 #[device(chip = 1)]
 pub fn gemv_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     matrix: &HbmTensor<bf16, Chip, m![I, J]>,
     vector: &HbmTensor<bf16, Chip, m![J]>,
 ) -> HbmTensor<bf16, Chip, m![I]> {

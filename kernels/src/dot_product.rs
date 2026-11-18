@@ -5,13 +5,13 @@ use rand::rngs::SmallRng;
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(dot_product_kernel.topology()).unwrap();
     let mut rng = SmallRng::seed_from_u64(42);
     let lhs = HostTensor::<bf16, m![A]>::rand(&mut rng);
     let rhs = HostTensor::<bf16, m![A]>::rand(&mut rng);
-    let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await;
-    let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await;
-    let _out_hbm = launch(dot_product_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await;
+    let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await.unwrap();
+    let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out_hbm = launch(dot_product_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await.unwrap();
     println!("Dot Product: kernel ran");
 }
 
@@ -21,14 +21,14 @@ mod tests {
 
     #[tokio::test]
     async fn matches_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(dot_product_kernel.topology()).unwrap();
 
         let mut rng = SmallRng::seed_from_u64(42);
         let lhs = HostTensor::<bf16, m![A]>::rand(&mut rng);
         let rhs = HostTensor::<bf16, m![A]>::rand(&mut rng);
 
-        let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await;
-        let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await;
+        let lhs_hbm = lhs.to_hbm(&mut ctx.pdma).await.unwrap();
+        let rhs_hbm = rhs.to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Reference: sum_i lhs[i] * rhs[i] in f32, then round to bf16.
         let lhs_buf: Vec<bf16> = lhs.into_vec();
@@ -40,9 +40,9 @@ mod tests {
             .sum();
         let expected = bf16::from_f32(expected_f32);
 
-        let out_hbm = launch(dot_product_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await;
+        let out_hbm = launch(dot_product_kernel, (&mut ctx, &lhs_hbm, &rhs_hbm)).await.unwrap();
 
-        let actual_buf: Vec<bf16> = out_hbm.to_host::<m![1]>(&mut ctx.pdma).await.into_vec();
+        let actual_buf: Vec<bf16> = out_hbm.to_host::<m![1]>(&mut ctx.pdma).await.unwrap().into_vec();
         if let Some(&actual) = actual_buf.first() {
             let diff = (f32::from(actual) - f32::from(expected)).abs();
             let tol = (0.02 * f32::from(expected).abs()).max(0.5);

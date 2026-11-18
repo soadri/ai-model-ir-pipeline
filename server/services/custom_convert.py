@@ -179,7 +179,7 @@ def analyze(model, x, code: str, started: float) -> dict:
         "fusion": fusion_dict,
         "level12": level12,
         "npu_ref": {"refs": refs, "all_verified": all_verified,
-                    "basis": "Llama-3.1 8B Decoder Layer (furiosa-opt 0.6, gemm M=512 현실적 규모)"},
+                    "basis": "Llama-3.1 8B Decoder Layer (furiosa-opt 0.10, gemm M=512 현실적 규모)"},
         "elapsed_s": round(time.time() - started, 2),
         "ir": {
             "linalg_preview": "\n".join(

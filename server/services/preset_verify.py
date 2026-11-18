@@ -313,7 +313,7 @@ def _save_run(level12: dict, level3: dict, ir_data: dict | None, scale: str = DE
         "model_type": "preset",
         "model_arch": "Decoder-only (GQA+RoPE)",
         "model_params": "8B",
-        "verify_scale": "furiosa-opt 0.6 (gemm M=512, elementwise A=16)",
+        "verify_scale": "furiosa-opt 0.10 (gemm M=512, elementwise A=16)",
         "core_ops": "Attention,Linear,Norm",
         "coverage_pct": ir.get("coverage_pct", 0),
         "converted_count": ir.get("rngd_count", 0),

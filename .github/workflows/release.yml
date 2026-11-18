@@ -166,7 +166,7 @@ jobs:
             echo "| Python | 3.11 |"
             echo "| PyTorch | 2.3.0.dev20240122+cpu ([재구성 wheel](https://github.com/${{ github.repository }}/releases/tag/build-deps-1)) |"
             echo "| torch-mlir | 20240127.1096 ([재구성 wheel](https://github.com/${{ github.repository }}/releases/tag/build-deps-1)) |"
-            echo "| NPU 시뮬레이터 | furiosa-opt 0.6.0 |"
+            echo "| NPU 시뮬레이터 | furiosa-opt 0.10.0 |"
           } > release-notes.md
           rm -f out/sample_model.py
           gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --latest out/*.json

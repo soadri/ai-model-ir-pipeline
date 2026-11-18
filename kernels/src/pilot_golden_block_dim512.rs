@@ -42,15 +42,15 @@ mod tests {
     use super::*;
     const PN: usize = 512;
 
-    async fn npu_gemm(ctx: &mut Context, x: Vec<u8>, w: Vec<u8>) -> Vec<bf16> {
-        let xh = HostTensor::<bf16, m![M,K]>::from_buf(x).to_hbm(&mut ctx.pdma).await;
-        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w).to_hbm(&mut ctx.pdma).await;
-        let oh = launch(pilot_golden_ffn_gate_kernel, (ctx, &xh, &wh)).await;
-        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.into_vec()
+    async fn npu_gemm(ctx: &mut Device, x: Vec<u8>, w: Vec<u8>) -> Vec<bf16> {
+        let xh = HostTensor::<bf16, m![M,K]>::from_buf(x).to_hbm(&mut ctx.pdma).await.unwrap();
+        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w).to_hbm(&mut ctx.pdma).await.unwrap();
+        let oh = launch(pilot_golden_ffn_gate_kernel, (ctx, &xh, &wh)).await.unwrap();
+        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.unwrap().into_vec()
     }
 
     /// K-tiled GEMM: accumulate along K axis → [seq, n_out] (n_out ≤ 512)
-    async fn k_tiled_gemm(ctx: &mut Context, xt: &[Vec<u8>], wt: &[Vec<u8>],
+    async fn k_tiled_gemm(ctx: &mut Device, xt: &[Vec<u8>], wt: &[Vec<u8>],
                           seq: usize, nout: usize) -> Vec<f32> {
         let mut acc = vec![0.0f32; seq*nout];
         for t in 0..xt.len() {
@@ -63,7 +63,7 @@ mod tests {
 
     /// K+N tiled GEMM: N축 타일링 (N > 512)
     /// 각 N타일에 대해 K-tiled GEMM 수행, 결과를 N축으로 연결
-    async fn kn_tiled_gemm(ctx: &mut Context, input: &[f32], seq: usize, in_dim: usize,
+    async fn kn_tiled_gemm(ctx: &mut Device, input: &[f32], seq: usize, in_dim: usize,
                            prefix: &str, n_out: usize, kt: usize, n_tiles: usize) -> Vec<f32> {
         let cols_per_nt = 512.min(n_out); // 각 N타일의 출력 열 수 (마지막은 나머지)
         let mut result = vec![0.0f32; seq * n_out];
@@ -106,7 +106,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_dim512_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
         let dim=512usize; let hidden=1024usize; let nh=8usize; let nkv=2usize;
         let hd=64usize; let seq=8usize; let nrep=nh/nkv; let eps=1e-5f32;

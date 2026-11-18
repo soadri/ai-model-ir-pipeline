@@ -8,7 +8,7 @@ pub type Slice   = m![A / 8 # 256];
 
 #[device(chip = 1)]
 pub fn pilot_golden_add_a8_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     lhs: &HbmTensor<f32, Chip, m![A]>,
     rhs: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {

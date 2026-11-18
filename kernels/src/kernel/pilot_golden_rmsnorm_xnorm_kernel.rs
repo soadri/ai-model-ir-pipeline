@@ -10,7 +10,7 @@ pub type Slice   = m![A / 8 # 256];
 
 #[device(chip = 1)]
 pub fn pilot_golden_rmsnorm_xnorm_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     x:         &HbmTensor<f32, Chip, m![A]>,
     rsqrt_val: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {

@@ -21,15 +21,15 @@ mod tests {
 
     #[tokio::test]
     async fn tiling_2d() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         // K=128, N=1024 → K=64×2, N=512×2 = 4 tiles
         let x0_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
             load_bf16_bin("data/tiling_2d_x0.bin"))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
         let x1_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
             load_bf16_bin("data/tiling_2d_x1.bin"))
-            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            .to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
 
         let mut n_partials: Vec<Vec<f32>> = Vec::new();
 
@@ -39,11 +39,11 @@ mod tests {
             for ki in 0..2u32 {
                 let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
                     load_bf16_bin(&format!("data/tiling_2d_w_n{ni}_k{ki}.bin")))
-                    .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+                    .to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
 
                 let x_hbm = if ki == 0 { &x0_hbm } else { &x1_hbm };
-                let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, x_hbm, &w_hbm)).await;
-                let tile: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+                let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, x_hbm, &w_hbm)).await.unwrap();
+                let tile: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
                 let tile_f32 = bf16_to_f32(&tile);
 
                 for (p, t) in partial.iter_mut().zip(tile_f32.iter()) {

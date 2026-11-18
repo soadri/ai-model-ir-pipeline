@@ -8,12 +8,12 @@ fn load_bf16_bin(path: &str) -> Vec<u8> {
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(pilot_golden_attn_qkt_kernel.topology()).unwrap();
     let matrix = HostTensor::<bf16, m![I, J]>::from_buf(load_bf16_bin("data/golden_attn_qkt_matrix.bin"));
     let vector = HostTensor::<bf16, m![J]>::from_buf(load_bf16_bin("data/golden_attn_qkt_vector.bin"));
-    let m_hbm = matrix.to_hbm(&mut ctx.pdma).await;
-    let v_hbm = vector.to_hbm(&mut ctx.pdma).await;
-    let _out = launch(pilot_golden_attn_qkt_kernel, (&mut ctx, &m_hbm, &v_hbm)).await;
+    let m_hbm = matrix.to_hbm(&mut ctx.pdma).await.unwrap();
+    let v_hbm = vector.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out = launch(pilot_golden_attn_qkt_kernel, (&mut ctx, &m_hbm, &v_hbm)).await.unwrap();
     println!("pilot_golden_attn_qkt: kernel ran");
 }
 
@@ -23,14 +23,14 @@ mod tests {
 
     #[tokio::test]
     async fn matches_bf16_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_attn_qkt_kernel.topology()).unwrap();
         let matrix = HostTensor::<bf16, m![I, J]>::from_buf(load_bf16_bin("data/golden_attn_qkt_matrix.bin"));
         let vector = HostTensor::<bf16, m![J]>::from_buf(load_bf16_bin("data/golden_attn_qkt_vector.bin"));
-        let m_hbm = matrix.to_hbm(&mut ctx.pdma).await;
-        let v_hbm = vector.to_hbm(&mut ctx.pdma).await;
+        let m_hbm = matrix.to_hbm(&mut ctx.pdma).await.unwrap();
+        let v_hbm = vector.to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(pilot_golden_attn_qkt_kernel, (&mut ctx, &m_hbm, &v_hbm)).await;
-        let actual: Vec<bf16> = out_hbm.to_host::<m![I]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(pilot_golden_attn_qkt_kernel, (&mut ctx, &m_hbm, &v_hbm)).await.unwrap();
+        let actual: Vec<bf16> = out_hbm.to_host::<m![I]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         let expected_bytes = load_bf16_bin("data/golden_attn_qkt_expected.bin");
         let expected: Vec<bf16> = expected_bytes.chunks(2).map(|c| {

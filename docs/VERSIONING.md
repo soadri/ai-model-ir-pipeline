@@ -24,7 +24,7 @@
 | Python | 3.11 | |
 | PyTorch | 2.3.0.dev20240122 (CPU) | 재구성 wheel |
 | torch-mlir | 20240127.1096 | 재구성 wheel |
-| NPU 시뮬레이터 | furiosa-opt 0.6.0 | Rust nightly-2026-05-01 |
+| NPU 시뮬레이터 | furiosa-opt 0.10.0 | Rust nightly-2026-05-01 |
 
 ### 하나의 버전으로 고정한 이유
 
@@ -73,3 +73,4 @@ Upstream이 지원 종료(EoL)를 선언한 버전은 다음 MINOR 버전부터 
 |:--|:--|
 | 2026. 11. | 첫 작성 (파이프라인 v0.1.2 기준) |
 | 2026. 11. | 사용 안내 태그를 MINOR 기준으로 일반화 (v0.2.0) |
+| 2026. 11. | NPU 시뮬레이터를 furiosa-opt 0.10.0으로 갱신 (v0.4.0) |

@@ -4,7 +4,7 @@ Upstream 변화 추적 — 파이프라인이 고정해서 쓰는 의존성과 U
 
   1) 고정 의존성을 지금도 받을 수 있는가
      - 재구성 wheel(build-deps-1)의 존재와 SHA-256
-     - furiosa-opt-std 0.6.0 (crates.io, 철회 여부)
+     - furiosa-opt-std 0.10.0 (crates.io, 철회 여부)
   2) Upstream에 새 버전이 나왔는가
      - PyTorch 안정 버전, torch-mlir 개발 wheel, furiosa-opt-std / cargo-furiosa-opt
 
@@ -28,7 +28,7 @@ TITLE = "Upstream 변화 감지"
 MARK = "<!-- upstream-fingerprint:"
 REPORT_FORMAT = 2   # 보고서 문구·형식을 바꾸면 올려서 기존 Issue 본문을 갱신
 
-PINNED = {"torch": "2.3.0.dev20240122+cpu", "torch-mlir": "20240127.1096", "furiosa-opt-std": "0.6.0"}
+PINNED = {"torch": "2.3.0.dev20240122+cpu", "torch-mlir": "20240127.1096", "furiosa-opt-std": "0.10.0"}
 
 
 def get(url, headers=None, raw=False):
@@ -85,10 +85,10 @@ def check_crate_pinned():
     versions = {v["num"]: v for v in data["versions"]}
     v = versions.get(PINNED["furiosa-opt-std"])
     if not v:
-        return {"name": "furiosa-opt-std 0.6.0", "ok": False, "note": "crates.io에서 찾을 수 없음"}
+        return {"name": "furiosa-opt-std 0.10.0", "ok": False, "note": "crates.io에서 찾을 수 없음"}
     if v.get("yanked"):
-        return {"name": "furiosa-opt-std 0.6.0", "ok": False, "note": "철회(yanked)됨"}
-    return {"name": "furiosa-opt-std 0.6.0", "ok": True, "note": "crates.io에서 받을 수 있음"}
+        return {"name": "furiosa-opt-std 0.10.0", "ok": False, "note": "철회(yanked)됨"}
+    return {"name": "furiosa-opt-std 0.10.0", "ok": True, "note": "crates.io에서 받을 수 있음"}
 
 
 # ── 2) Upstream 최신 버전 ───────────────────────────────────────────────

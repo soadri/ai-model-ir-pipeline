@@ -12,7 +12,7 @@ pub type Slice   = m![A / 8 # 256];
 // Step 1: silu(a) = a * sigmoid(a)
 #[device(chip = 1)]
 pub fn silu_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     a: &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {
     let a_dm = a.to_dm::<Cluster, Slice, m![A % 8]>(&mut ctx.tdma);
@@ -60,7 +60,7 @@ pub fn silu_kernel(
 // Step 2: silu_result * gate (elementwise mul)
 #[device(chip = 1)]
 pub fn gate_mul_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     silu_out: &HbmTensor<f32, Chip, m![A]>,
     gate:     &HbmTensor<f32, Chip, m![A]>,
 ) -> HbmTensor<f32, Chip, m![A]> {

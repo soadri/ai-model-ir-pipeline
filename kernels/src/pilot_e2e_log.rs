@@ -7,10 +7,10 @@ use reference_data_e2e_log::{CHECK_N, reference_input, reference_expected};
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(pilot_e2e_log_kernel.topology()).unwrap();
     let input = HostTensor::<f32, m![A]>::from_buf(to_bytes(&reference_input()));
-    let input_hbm = input.to_hbm(&mut ctx.pdma).await;
-    let _out_hbm = launch(pilot_e2e_log_kernel, (&mut ctx, &input_hbm)).await;
+    let input_hbm = input.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out_hbm = launch(pilot_e2e_log_kernel, (&mut ctx, &input_hbm)).await.unwrap();
     println!("Pilot E2E log: kernel ran");
 }
 
@@ -20,12 +20,12 @@ mod tests {
 
     #[tokio::test]
     async fn matches_actual_pytorch_output() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_e2e_log_kernel.topology()).unwrap();
         let input = HostTensor::<f32, m![A]>::from_buf(to_bytes(&reference_input()));
-        let input_hbm = input.to_hbm(&mut ctx.pdma).await;
+        let input_hbm = input.to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(pilot_e2e_log_kernel, (&mut ctx, &input_hbm)).await;
-        let actual: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(pilot_e2e_log_kernel, (&mut ctx, &input_hbm)).await.unwrap();
+        let actual: Vec<f32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
         let expected = reference_expected();
 
         println!("=== PyTorch 실제 출력 vs RNGD 시뮬레이터 출력 ===");

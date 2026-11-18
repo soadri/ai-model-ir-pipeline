@@ -14,7 +14,7 @@ pub type Lane = m![1];
 
 #[device(chip = 1)]
 pub fn pilot_e2e_dot_product_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     lhs: &HbmTensor<bf16, Chip, m![A]>,
     rhs: &HbmTensor<bf16, Chip, m![A]>,
 ) -> HbmTensor<bf16, Chip, m![1]> {

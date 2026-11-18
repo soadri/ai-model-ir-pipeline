@@ -8,7 +8,7 @@ pub type Slice = m![A / 8 # 256];
 
 #[device(chip = 1)]
 pub fn elementwise_mul_kernel(
-    ctx: &mut Context,
+    ctx: &mut Device,
     lhs: &HbmTensor<i32, Chip, m![A]>,
     rhs: &HbmTensor<i32, Chip, m![A]>,
 ) -> HbmTensor<i32, Chip, m![A]> {

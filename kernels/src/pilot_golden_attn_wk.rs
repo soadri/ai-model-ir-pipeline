@@ -17,15 +17,15 @@ mod tests {
 
     #[tokio::test]
     async fn matches_pytorch_golden_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            load_bf16_bin("data/golden_attn_wk_a.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/golden_attn_wk_a.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
         let w_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/golden_attn_wk_b.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/golden_attn_wk_b.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &w_hbm)).await;
-        let actual: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &w_hbm)).await.unwrap();
+        let actual: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         let exp_bytes = load_bf16_bin("data/golden_attn_wk_expected.bin");
         let expected: Vec<bf16> = exp_bytes.chunks(2)

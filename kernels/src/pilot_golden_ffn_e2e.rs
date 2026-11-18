@@ -21,16 +21,16 @@ mod tests {
 
     #[tokio::test]
     async fn ffn_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
 
         // Step 1: gate = x @ w_gate.T (RNGD gemm)
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            load_bf16_bin("data/ffn_e2e_x.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/ffn_e2e_x.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
         let wg_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/ffn_e2e_w_gate.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/ffn_e2e_w_gate.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let gate_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wg_hbm)).await;
-        let gate: Vec<bf16> = gate_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let gate_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wg_hbm)).await.unwrap();
+        let gate: Vec<bf16> = gate_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 1 gate[0:4]: {:?}", &gate[..4]);
 
         // Step 2: silu(gate) = gate * sigmoid(gate) (CPU — 262144개 원소)
@@ -42,10 +42,10 @@ mod tests {
 
         // Step 3: up = x @ w_up.T (RNGD gemm — 같은 커널 재사용)
         let wu_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/ffn_e2e_w_up.bin")).to_hbm(&mut ctx.pdma).await;
+            load_bf16_bin("data/ffn_e2e_w_up.bin")).to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let up_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wu_hbm)).await;
-        let up: Vec<bf16> = up_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let up_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &x_hbm, &wu_hbm)).await.unwrap();
+        let up: Vec<bf16> = up_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let up_f32 = bf16_to_f32_vec(&up);
         println!("Step 3 up[0:4]: {:?}", &up[..4]);
 

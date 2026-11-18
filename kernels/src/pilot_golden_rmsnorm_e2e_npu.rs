@@ -16,40 +16,40 @@ use rngd_tcp_kernel_dev::kernel::pilot_golden_add_a8_kernel::{
 mod reference_data_golden_rmsnorm_e2e;
 use reference_data_golden_rmsnorm_e2e::{reference_input, reference_expected};
 
-async fn reduce_sum_npu(ctx: &mut Context, x: &[f32]) -> f32 {
+async fn reduce_sum_npu(ctx: &mut Device, x: &[f32]) -> f32 {
     let lo_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&x[0..8].to_vec()))
-        .to_hbm(&mut ctx.pdma).await;
+        .to_hbm(&mut ctx.pdma).await.unwrap();
     let hi_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&x[8..16].to_vec()))
-        .to_hbm(&mut ctx.pdma).await;
-    let p1 = launch(pilot_golden_add_a8_kernel, (ctx, &lo_hbm, &hi_hbm)).await;
-    let p1v: Vec<f32> = p1.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        .to_hbm(&mut ctx.pdma).await.unwrap();
+    let p1 = launch(pilot_golden_add_a8_kernel, (ctx, &lo_hbm, &hi_hbm)).await.unwrap();
+    let p1v: Vec<f32> = p1.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
 
     let mut lo2 = p1v[0..4].to_vec(); lo2.extend(vec![0.0f32; 4]);
     let mut hi2 = p1v[4..8].to_vec(); hi2.extend(vec![0.0f32; 4]);
     let lo2_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&lo2))
-        .to_hbm(&mut ctx.pdma).await;
+        .to_hbm(&mut ctx.pdma).await.unwrap();
     let hi2_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&hi2))
-        .to_hbm(&mut ctx.pdma).await;
-    let p2 = launch(pilot_golden_add_a8_kernel, (ctx, &lo2_hbm, &hi2_hbm)).await;
-    let p2v: Vec<f32> = p2.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        .to_hbm(&mut ctx.pdma).await.unwrap();
+    let p2 = launch(pilot_golden_add_a8_kernel, (ctx, &lo2_hbm, &hi2_hbm)).await.unwrap();
+    let p2v: Vec<f32> = p2.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
 
     let lo3 = vec![p2v[0], p2v[1], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let hi3 = vec![p2v[2], p2v[3], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let lo3_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&lo3))
-        .to_hbm(&mut ctx.pdma).await;
+        .to_hbm(&mut ctx.pdma).await.unwrap();
     let hi3_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&hi3))
-        .to_hbm(&mut ctx.pdma).await;
-    let p3 = launch(pilot_golden_add_a8_kernel, (ctx, &lo3_hbm, &hi3_hbm)).await;
-    let p3v: Vec<f32> = p3.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        .to_hbm(&mut ctx.pdma).await.unwrap();
+    let p3 = launch(pilot_golden_add_a8_kernel, (ctx, &lo3_hbm, &hi3_hbm)).await.unwrap();
+    let p3v: Vec<f32> = p3.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
 
     let lo4 = vec![p3v[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let hi4 = vec![p3v[1], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
     let lo4_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&lo4))
-        .to_hbm(&mut ctx.pdma).await;
+        .to_hbm(&mut ctx.pdma).await.unwrap();
     let hi4_hbm = HostTensor::<f32, m![A8]>::from_buf(to_bytes(&hi4))
-        .to_hbm(&mut ctx.pdma).await;
-    let p4 = launch(pilot_golden_add_a8_kernel, (ctx, &lo4_hbm, &hi4_hbm)).await;
-    let p4v: Vec<f32> = p4.to_host::<m![A8]>(&mut ctx.pdma).await.into_vec();
+        .to_hbm(&mut ctx.pdma).await.unwrap();
+    let p4 = launch(pilot_golden_add_a8_kernel, (ctx, &lo4_hbm, &hi4_hbm)).await.unwrap();
+    let p4v: Vec<f32> = p4.to_host::<m![A8]>(&mut ctx.pdma).await.unwrap().into_vec();
 
     p4v[0]
 }
@@ -63,15 +63,15 @@ mod tests {
 
     #[tokio::test]
     async fn rmsnorm_e2e_full_npu() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_add_a8_kernel.topology()).unwrap();
         let x = reference_input();
         let expected = reference_expected();
 
         let x_hbm = HostTensor::<f32, m![RA]>::from_buf(to_bytes(&x))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let xsq_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await;
-        let x_sq: Vec<f32> = xsq_hbm.to_host::<m![RA]>(&mut ctx.pdma).await.into_vec();
+        let xsq_hbm = launch(pilot_golden_rmsnorm_mul_kernel, (&mut ctx, &x_hbm)).await.unwrap();
+        let x_sq: Vec<f32> = xsq_hbm.to_host::<m![RA]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         let sum_xsq = reduce_sum_npu(&mut ctx, &x_sq).await;
         let mean_sq = sum_xsq / RA::SIZE as f32;
@@ -80,19 +80,19 @@ mod tests {
 
         let rms_vec = vec![(mean_sq + eps); RA::SIZE];
         let rms_hbm = HostTensor::<f32, m![RA]>::from_buf(to_bytes(&rms_vec))
-            .to_hbm(&mut ctx.pdma).await;
-        let rsqrt_hbm = launch(pilot_golden_rmsnorm_rsqrt_kernel, (&mut ctx, &rms_hbm)).await;
-        let rsqrt: Vec<f32> = rsqrt_hbm.to_host::<m![RA]>(&mut ctx.pdma).await.into_vec();
+            .to_hbm(&mut ctx.pdma).await.unwrap();
+        let rsqrt_hbm = launch(pilot_golden_rmsnorm_rsqrt_kernel, (&mut ctx, &rms_hbm)).await.unwrap();
+        let rsqrt: Vec<f32> = rsqrt_hbm.to_host::<m![RA]>(&mut ctx.pdma).await.unwrap().into_vec();
         println!("Step 3 rsqrt={:.6}", rsqrt[0]);
 
         let x_hbm2 = HostTensor::<f32, m![AX]>::from_buf(to_bytes(&x))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let rsqrt_hbm2 = HostTensor::<f32, m![AX]>::from_buf(to_bytes(&rsqrt))
-            .to_hbm(&mut ctx.pdma).await;
+            .to_hbm(&mut ctx.pdma).await.unwrap();
         let xnorm_hbm = launch(
             pilot_golden_rmsnorm_xnorm_kernel, (&mut ctx, &x_hbm2, &rsqrt_hbm2)
-        ).await;
-        let x_norm: Vec<f32> = xnorm_hbm.to_host::<m![AX]>(&mut ctx.pdma).await.into_vec();
+        ).await.unwrap();
+        let x_norm: Vec<f32> = xnorm_hbm.to_host::<m![AX]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         println!("\n=== RMSNorm e2e Full NPU (0.6) ===");
         for i in 0..RA::SIZE {

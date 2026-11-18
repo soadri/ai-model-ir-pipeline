@@ -7,7 +7,7 @@ pub type Cluster = m![1 # 2];
 pub type Slice = m![A / 8 # 256];
 
 #[device(chip = 1)]
-pub fn constant_add_kernel(ctx: &mut Context, input: &HbmTensor<i32, Chip, m![A]>) -> HbmTensor<i32, Chip, m![A]> {
+pub fn constant_add_kernel(ctx: &mut Device, input: &HbmTensor<i32, Chip, m![A]>) -> HbmTensor<i32, Chip, m![A]> {
     // HBM → DM: split 2048 elements across 256 slices (8 elements per slice)
     let dm = input.to_dm::<Cluster, Slice, m![A % 8]>(&mut ctx.tdma);
 

@@ -43,14 +43,14 @@ mod tests {
     const PN: usize = 512;
     const GK: usize = 256; // GEMM K size
 
-    async fn npu_gemm(ctx: &mut Context, x: Vec<u8>, w: Vec<u8>) -> Vec<bf16> {
-        let xh = HostTensor::<bf16, m![M,K]>::from_buf(x).to_hbm(&mut ctx.pdma).await;
-        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w).to_hbm(&mut ctx.pdma).await;
-        let oh = launch(test_k256_gemm_kernel, (ctx, &xh, &wh)).await;
-        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.into_vec()
+    async fn npu_gemm(ctx: &mut Device, x: Vec<u8>, w: Vec<u8>) -> Vec<bf16> {
+        let xh = HostTensor::<bf16, m![M,K]>::from_buf(x).to_hbm(&mut ctx.pdma).await.unwrap();
+        let wh = HostTensor::<bf16, m![N,K]>::from_buf(w).to_hbm(&mut ctx.pdma).await.unwrap();
+        let oh = launch(test_k256_gemm_kernel, (ctx, &xh, &wh)).await.unwrap();
+        oh.to_host::<m![M,N]>(&mut ctx.pdma).await.unwrap().into_vec()
     }
 
-    async fn k_tiled_gemm(ctx: &mut Context, xt: &[Vec<u8>], wt: &[Vec<u8>],
+    async fn k_tiled_gemm(ctx: &mut Device, xt: &[Vec<u8>], wt: &[Vec<u8>],
                           seq: usize, nout: usize) -> Vec<f32> {
         let mut acc = vec![0.0f32; seq*nout];
         for t in 0..xt.len() {
@@ -61,7 +61,7 @@ mod tests {
         acc
     }
 
-    async fn kn_tiled_gemm_opt(ctx: &mut Context, input: &[f32], seq: usize, in_dim: usize,
+    async fn kn_tiled_gemm_opt(ctx: &mut Device, input: &[f32], seq: usize, in_dim: usize,
                                prefix: &str, n_out: usize, kt: usize, n_tiles: usize) -> Vec<f32> {
         let x_hbms: Vec<Vec<u8>> = (0..kt).map(|t| {
             let st = t*GK;
@@ -75,7 +75,7 @@ mod tests {
         let mut x_hbm_tensors = Vec::with_capacity(kt);
         for buf in &x_hbms {
             let hbm = HostTensor::<bf16, m![M,K]>::from_buf(buf.clone())
-                .to_hbm(&mut ctx.pdma).await;
+                .to_hbm(&mut ctx.pdma).await.unwrap();
             x_hbm_tensors.push(hbm);
         }
 
@@ -86,9 +86,9 @@ mod tests {
             let mut acc = vec![0.0f32; seq * n_cols];
             for t in 0..kt {
                 let w_buf = load_bf16_bin(&format!("data/{prefix}_n{nt}_t{t}.bin"));
-                let wh = HostTensor::<bf16, m![N,K]>::from_buf(w_buf).to_hbm(&mut ctx.pdma).await;
-                let oh = launch(test_k256_gemm_kernel, (ctx, &x_hbm_tensors[t], &wh)).await;
-                let raw: Vec<bf16> = oh.to_host::<m![M,N]>(&mut ctx.pdma).await.into_vec();
+                let wh = HostTensor::<bf16, m![N,K]>::from_buf(w_buf).to_hbm(&mut ctx.pdma).await.unwrap();
+                let oh = launch(test_k256_gemm_kernel, (ctx, &x_hbm_tensors[t], &wh)).await.unwrap();
+                let raw: Vec<bf16> = oh.to_host::<m![M,N]>(&mut ctx.pdma).await.unwrap().into_vec();
                 let p = bf16_to_f32(&raw);
                 for s in 0..seq { for d in 0..n_cols { acc[s*n_cols+d] += p[s*PN+d]; } }
             }
@@ -99,7 +99,7 @@ mod tests {
         result
     }
 
-    async fn k_only_tiled_opt(ctx: &mut Context, input: &[f32], seq: usize, in_dim: usize,
+    async fn k_only_tiled_opt(ctx: &mut Device, input: &[f32], seq: usize, in_dim: usize,
                               prefix: &str, n_out: usize, kt: usize) -> Vec<f32> {
         let x_bufs: Vec<Vec<u8>> = (0..kt).map(|t| {
             let st = t*GK;
@@ -137,7 +137,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_dim2048k256_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(test_k256_gemm_kernel.topology()).unwrap();
         let t0 = std::time::Instant::now();
         let dim=2048usize; let hidden=4096usize; let nh=8usize; let nkv=2usize;
         let hd=256usize; let seq=8usize; let nrep=nh/nkv; let eps=1e-5f32;

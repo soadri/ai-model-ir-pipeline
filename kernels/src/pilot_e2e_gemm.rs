@@ -8,12 +8,12 @@ fn load_bf16_bin(path: &str) -> Vec<u8> {
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(pilot_e2e_gemm_kernel.topology()).unwrap();
     let a = HostTensor::<bf16, m![M, K]>::from_buf(load_bf16_bin("data/e2e_gemm_a.bin"));
     let b = HostTensor::<bf16, m![N, K]>::from_buf(load_bf16_bin("data/e2e_gemm_b.bin"));
-    let a_hbm = a.to_hbm(&mut ctx.pdma).await;
-    let b_hbm = b.to_hbm(&mut ctx.pdma).await;
-    let _out = launch(pilot_e2e_gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await;
+    let a_hbm = a.to_hbm(&mut ctx.pdma).await.unwrap();
+    let b_hbm = b.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out = launch(pilot_e2e_gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await.unwrap();
     println!("Pilot E2E gemm: kernel ran");
 }
 
@@ -23,14 +23,14 @@ mod tests {
 
     #[tokio::test]
     async fn matches_bf16_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_e2e_gemm_kernel.topology()).unwrap();
         let a = HostTensor::<bf16, m![M, K]>::from_buf(load_bf16_bin("data/e2e_gemm_a.bin"));
         let b = HostTensor::<bf16, m![N, K]>::from_buf(load_bf16_bin("data/e2e_gemm_b.bin"));
-        let a_hbm = a.to_hbm(&mut ctx.pdma).await;
-        let b_hbm = b.to_hbm(&mut ctx.pdma).await;
+        let a_hbm = a.to_hbm(&mut ctx.pdma).await.unwrap();
+        let b_hbm = b.to_hbm(&mut ctx.pdma).await.unwrap();
 
-        let out_hbm = launch(pilot_e2e_gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await;
-        let actual: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let out_hbm = launch(pilot_e2e_gemm_kernel, (&mut ctx, &a_hbm, &b_hbm)).await.unwrap();
+        let actual: Vec<bf16> = out_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
 
         let expected_bytes = load_bf16_bin("data/e2e_gemm_expected.bin");
         let expected: Vec<bf16> = expected_bytes.chunks(2).map(|c| {

@@ -5,11 +5,11 @@ use rand::rngs::SmallRng;
 
 #[tokio::main]
 async fn main() {
-    let mut ctx = Context::acquire();
+    let mut ctx = Device::new(constant_add_kernel.topology()).unwrap();
     let mut rng = SmallRng::seed_from_u64(42);
     let input = HostTensor::<i32, m![A]>::rand(&mut rng);
-    let in_hbm = input.to_hbm(&mut ctx.pdma).await;
-    let _out_hbm = launch(constant_add_kernel, (&mut ctx, &in_hbm)).await;
+    let in_hbm = input.to_hbm(&mut ctx.pdma).await.unwrap();
+    let _out_hbm = launch(constant_add_kernel, (&mut ctx, &in_hbm)).await.unwrap();
     println!("Constant Add: kernel ran");
 }
 
@@ -19,21 +19,21 @@ mod tests {
 
     #[tokio::test]
     async fn matches_reference() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(constant_add_kernel.topology()).unwrap();
 
         let mut rng = SmallRng::seed_from_u64(42);
         let input = HostTensor::<i32, m![A]>::rand(&mut rng);
-        let in_hbm = input.to_hbm(&mut ctx.pdma).await;
+        let in_hbm = input.to_hbm(&mut ctx.pdma).await.unwrap();
 
         // Reference: out[i] = in[i] + 1.
         let in_buf: Vec<i32> = input.into_vec();
         let expected: Vec<i32> = in_buf.iter().map(|&x| x.wrapping_add(1)).collect();
 
-        let out_hbm = launch(constant_add_kernel, (&mut ctx, &in_hbm)).await;
+        let out_hbm = launch(constant_add_kernel, (&mut ctx, &in_hbm)).await.unwrap();
 
         // Under the typecheck backend `actual` is empty (phantom tensors), so
         // the loop trivially runs zero iterations and the assertion is skipped.
-        let actual: Vec<i32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.into_vec();
+        let actual: Vec<i32> = out_hbm.to_host::<m![A]>(&mut ctx.pdma).await.unwrap().into_vec();
         for (i, (&e, &a)) in expected.iter().zip(&actual).enumerate() {
             assert_eq!(e, a, "constant_add mismatch at i={i}: expected {e}, actual {a}");
         }

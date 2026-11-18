@@ -85,7 +85,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_end_to_end() {
-        let mut ctx = Context::acquire();
+        let mut ctx = Device::new(pilot_golden_ffn_gate_kernel.topology()).unwrap();
         type Chip = m![1];
         let m_dim = 512usize;
         let k_dim = 64usize;
@@ -93,21 +93,21 @@ mod tests {
 
         // 입력 로드
         let x_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            load_bf16_bin("data/block_e2e_x.bin")).to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            load_bf16_bin("data/block_e2e_x.bin")).to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
         let x_bf16 = bf16_vec_from_bin("data/block_e2e_x.bin");
         let x_f32 = bf16_to_f32(&x_bf16);
 
         // 가중치 로드
         let wq_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/block_e2e_wq.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            load_bf16_bin("data/block_e2e_wq.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
         let wk_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/block_e2e_wk.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            load_bf16_bin("data/block_e2e_wk.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
         let wv_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/block_e2e_wv.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            load_bf16_bin("data/block_e2e_wv.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
         let wgate_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/block_e2e_w_gate.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            load_bf16_bin("data/block_e2e_w_gate.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
         let wup_hbm = HostTensor::<bf16, m![N, K]>::from_buf(
-            load_bf16_bin("data/block_e2e_w_up.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await;
+            load_bf16_bin("data/block_e2e_w_up.bin")).to_hbm::<m![1], m![N, K]>(&mut ctx.pdma).await.unwrap();
 
         // === Step 1: RMSNorm1 (CPU) ===
         let norm1 = rmsnorm_cpu(&x_f32, k_dim);
@@ -116,18 +116,18 @@ mod tests {
 
         // === Step 2: Q/K/V projection (RNGD gemm) ===
         let n1_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            to_bytes(&norm1_bf16)).to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            to_bytes(&norm1_bf16)).to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
 
-        let q_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n1_hbm, &wq_hbm)).await;
-        let q: Vec<bf16> = q_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let q_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n1_hbm, &wq_hbm)).await.unwrap();
+        let q: Vec<bf16> = q_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let q_f32 = bf16_to_f32(&q);
 
-        let k_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n1_hbm, &wk_hbm)).await;
-        let k_val: Vec<bf16> = k_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let k_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n1_hbm, &wk_hbm)).await.unwrap();
+        let k_val: Vec<bf16> = k_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let k_f32 = bf16_to_f32(&k_val);
 
-        let v_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n1_hbm, &wv_hbm)).await;
-        let v_val: Vec<bf16> = v_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let v_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n1_hbm, &wv_hbm)).await.unwrap();
+        let v_val: Vec<bf16> = v_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let v_f32 = bf16_to_f32(&v_val);
         println!("Step 2 Q/K/V projection done (RNGD)");
 
@@ -153,14 +153,14 @@ mod tests {
 
         // === Step 6: FFN gate/up (RNGD) + silu/mul/down (CPU) ===
         let n2_hbm = HostTensor::<bf16, m![M, K]>::from_buf(
-            to_bytes(&norm2_bf16)).to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await;
+            to_bytes(&norm2_bf16)).to_hbm::<m![1], m![M, K]>(&mut ctx.pdma).await.unwrap();
 
-        let gate_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n2_hbm, &wgate_hbm)).await;
-        let gate: Vec<bf16> = gate_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let gate_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n2_hbm, &wgate_hbm)).await.unwrap();
+        let gate: Vec<bf16> = gate_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let gate_f32 = bf16_to_f32(&gate);
 
-        let up_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n2_hbm, &wup_hbm)).await;
-        let up: Vec<bf16> = up_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.into_vec();
+        let up_hbm = launch(pilot_golden_ffn_gate_kernel, (&mut ctx, &n2_hbm, &wup_hbm)).await.unwrap();
+        let up: Vec<bf16> = up_hbm.to_host::<m![M, N]>(&mut ctx.pdma).await.unwrap().into_vec();
         let up_f32 = bf16_to_f32(&up);
 
         // silu(gate) * up (CPU)
