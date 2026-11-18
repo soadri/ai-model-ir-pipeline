@@ -4,6 +4,7 @@ import { h } from "./dom.js";
 import { SCALES } from "./labels.js";
 import { renderHistory } from "./views/history.js";
 import { renderInput } from "./views/input.js";
+import { renderRegistry } from "./views/registry.js";
 import { normalizeCustom, normalizePreset, renderResult } from "./views/result.js";
 import { renderError, renderIntro, renderProgress } from "./views/stage.js";
 
@@ -54,26 +55,52 @@ async function run(task, label, estimate, input) {
 async function init() {
   const info = await api.info().catch(() => ({ scales: ["sim_small"], kernel: {} }));
   const env = document.getElementById("env");
-  env.append(
+  env.append(...[
     h("span", { class: "ok" }, `v${info.version || "0.1.0"}`),
     h("span", {}, info.kernel?.simulator || "NPU 시뮬레이터"),
-    info.kernel?.prebuilt_kernels ? h("span", {}, `커널 ${info.kernel.prebuilt_kernels}개 준비됨`) : null);
+    info.kernel?.prebuilt_kernels ? h("span", {}, `커널 ${info.kernel.prebuilt_kernels}개 준비됨`) : null,
+  ].filter(Boolean));
 
   const input = renderInput(document.getElementById("input"), {
     scales: info.scales,
+    tokenRequired: !!info.convert_token_required,
     onScale: (scale) => showCached(scale),
     onPreset: async (scale) => {
       const data = await run(() => api.verify(scale), "Llama-3.1 8B Decoder Layer를 변환하고 검증하는 중입니다", SCALES[scale]?.time, input);
       if (data) renderResult(main, normalizePreset(data, scale), await latestRunId());
     },
-    onCustom: async (code) => {
+    onCustom: async (code, token) => {
       if (!code.trim()) return renderError(main, "모델 코드를 입력해주세요.");
-      const data = await run(() => api.convert(code), "사용자 모델을 변환하고 검증하는 중입니다", "10초 안팎", input);
+      if (info.convert_token_required && !token) return renderError(main, "접근 토큰을 입력해주세요.", "이 서버는 토큰이 있어야 사용자 모델을 실행합니다. 토큰은 서버 관리자에게 문의해 주세요.");
+      const data = await run(() => api.convert(code, token), "사용자 모델을 변환하고 검증하는 중입니다", "10초 안팎", input);
       if (data) renderResult(main, normalizeCustom(data), await latestRunId());
     },
   });
 
   renderHistory(historyList);
+
+  // 상단 화면 전환: #rules 이면 변환 규칙, 그 밖은 변환·검증
+  const nav = document.getElementById("nav");
+  const views = { verify: "변환·검증", rules: "변환 규칙" };
+  const navButtons = Object.entries(views).map(([key, label]) =>
+    h("a", { href: key === "verify" ? "#" : `#${key}`, dataset: { view: key } }, label));
+  nav.append(...navButtons);
+  let lastVerify = null;
+  const show = async () => {
+    const view = location.hash === "#rules" ? "rules" : "verify";
+    document.body.dataset.view = view;
+    for (const b of navButtons) b.setAttribute("aria-current", b.dataset.view === view ? "page" : "false");
+    if (view === "rules") {
+      if (!busy) { lastVerify = [...main.childNodes]; await renderRegistry(main); }
+    } else if (lastVerify) {
+      main.replaceChildren(...lastVerify);
+      lastVerify = null;
+    }
+  };
+  window.addEventListener("hashchange", show);
+  if (location.hash === "#rules") return show();
+  document.body.dataset.view = "verify";
+  navButtons[0].setAttribute("aria-current", "page");
 
   if (api.demo === "custom") {
     input.select("custom");

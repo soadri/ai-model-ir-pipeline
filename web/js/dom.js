@@ -32,6 +32,7 @@ const ICONS = {
   info: "M8 14A6 6 0 108 2a6 6 0 000 12zM8 7.2v4M8 5v.1",
   down: "M8 2.5v8m-3.5-3.5L8 10.5l3.5-3.5M3 13.5h10",
   file: "M4 1.8h5l3 3v9.4H4zM9 1.8v3h3",
+  search: "M7 12a5 5 0 100-10 5 5 0 000 10zM10.6 10.6L14 14",
 };
 
 export function icon(name, cls = "") {

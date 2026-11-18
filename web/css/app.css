@@ -402,3 +402,54 @@ table.t code { font-size: 12px; color: var(--violet); }
 .cached { font-size: 12.5px; color: var(--sub); }
 .foot { color: var(--muted); font-size: 12px; text-align: center; padding: 24px 0 0; }
 [hidden] { display: none !important; }
+
+/* ── 상단 화면 전환 ───────────────────────────────────────────── */
+.nav { display: flex; gap: 4px; margin-left: 12px; }
+.nav a {
+  padding: 6px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--sub);
+}
+.nav a:hover { background: var(--bg); text-decoration: none; }
+.nav a[aria-current="page"] { background: var(--blue-t); color: var(--blue); }
+body[data-view="rules"] .layout { grid-template-columns: minmax(0, 1fr); }
+body[data-view="rules"] .side { display: none; }
+
+/* ── 변환 규칙 ────────────────────────────────────────────────── */
+.rules-toolbar { display: grid; gap: 12px; margin-bottom: 14px; }
+.search-wrap { position: relative; }
+.search-wrap .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); }
+.search {
+  width: 100%; padding: 10px 12px 10px 36px; font: inherit; font-size: 14px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--ink);
+}
+.search:focus { outline: 2px solid var(--blue-t); border-color: var(--blue); }
+.filters { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.filters .field-label { margin: 0; }
+.filters .spacer { flex: 1; }
+.rules-table td:nth-child(3) code, .rules-table td:nth-child(4) code { white-space: nowrap; }
+.rules-table code.npu { color: var(--blue); }
+.rules-table td .small { display: block; margin-top: 2px; }
+.rule-row { cursor: pointer; }
+.rule-row:hover td { background: var(--bg); }
+.rule-row.open td { background: var(--blue-t); border-bottom-color: transparent; }
+.rule-detail td { background: var(--blue-t); padding-top: 0; }
+.rule-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 4px 2px 6px; }
+.rule-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; display: grid; gap: 4px; }
+.rule-item .k { font-size: 12px; font-weight: 600; color: var(--sub); }
+.rule-item .v { font-size: 13px; line-height: 1.55; }
+.rule-item.pass .k { color: var(--green); }
+.rule-item.fail .k { color: var(--red); }
+.rule-item.mono .v { font-family: var(--mono); font-size: 12px; color: var(--violet); }
+@media (max-width: 1000px) { .rule-grid { grid-template-columns: 1fr; } }
+.tag.exp { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 11px; background: var(--amber-t); color: var(--amber); }
+.state { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.state.ok { color: var(--green); }
+.state.wip { color: var(--amber); }
+.state.ng { color: var(--red); }
+.state.plan { color: var(--muted); }
+
+/* ── 접근 토큰 ────────────────────────────────────────────────── */
+.token-field { display: grid; gap: 6px; margin: 12px 0 0; }
+.token {
+  width: 100%; padding: 9px 12px; font: inherit; font-size: 13.5px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--ink);
+}

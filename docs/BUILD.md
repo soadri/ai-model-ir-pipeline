@@ -102,8 +102,33 @@ furiosa-opt(`furiosa-opt-std` 0.6)는 cargo가 crates.io에서 받으며, `kerne
 | `RNGD_VAR_DIR` | 실행 이력과 캐시 저장 경로 | `<저장소>/var` |
 | `RNGD_SCALES` | 사용할 검증 규모(쉼표로 구분) | `sim_small,sim_mid` |
 | `RNGD_HOST`, `RNGD_PORT` | 대시보드 접속 주소 | `127.0.0.1`, `8100` |
+| `RNGD_CONVERT_TOKEN_FILE`, `RNGD_CONVERT_TOKENS` | 사용자 모델 변환 접근 토큰 (C절 참고) | 설정 안 함 (토큰 없이 실행) |
 
 <br>
+
+## C. 여러 사람이 접속하는 서버에서 운영할 때
+
+체험 이미지는 본인 PC에서만 쓰도록 포트를 `127.0.0.1`에만 엽니다. 사용자 모델 변환은 입력한 코드를 서버에서 실행하므로,
+여러 사람이 접속하는 서버로 운영한다면 **사용자 모델 변환에 접근 토큰을 거는 것**을 권합니다.
+변환 규칙, 기본 모델 검증, 실행 이력 화면은 토큰 없이 그대로 쓸 수 있습니다.
+
+| 환경 변수 | 내용 |
+|:--|:--|
+| `RNGD_CONVERT_TOKEN_FILE` | 토큰 파일 경로. 한 줄에 `기관:토큰` 형식. 요청마다 다시 읽어 서버를 다시 띄우지 않고 토큰을 추가·회수할 수 있습니다. 경로를 지정했는데 파일이 없거나 비어 있으면 변환을 막습니다 |
+| `RNGD_CONVERT_TOKENS` | 토큰 목록을 직접 지정 (예: `nota:토큰1,postech:토큰2`). 바꾸면 서버를 다시 띄워야 합니다 |
+
+```bash
+# 토큰 만들기
+python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+
+# 토큰 파일을 쓰는 예 (컨테이너의 /data 볼륨에 둠)
+echo "nota:<만든 토큰>" >> convert_tokens && chmod 600 convert_tokens
+docker run -d -p 8100:8100 -v "$PWD:/data" -e RNGD_CONVERT_TOKEN_FILE=/data/convert_tokens \
+  ghcr.io/soadri/ai-model-ir-pipeline:0.3
+```
+
+토큰을 설정한 서버에서는 대시보드의 사용자 모델 화면에 토큰 입력칸이 나타나고, API로 호출할 때는 `X-Access-Token` 헤더에 토큰을 넣습니다.
+요청마다 시각, 기관, 성공 여부, 접속 IP가 실행 이력 폴더의 `convert_access.log`에 남습니다.
 
 ## 문제 해결
 

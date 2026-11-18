@@ -21,3 +21,15 @@ export const SCALES = {
 };
 
 export const STRATEGY = { pad: "패딩", tile: "K 분할(타일링)", direct: "그대로 실행" };
+
+export const FAMILIES = {
+  elementwise: { label: "원소 단위", hint: "원소마다 같은 계산 (덧셈, 지수, 제곱근 등)" },
+  contraction: { label: "축약", hint: "축을 따라 곱하고 더하는 계산 (행렬 곱 등)" },
+};
+
+export const RULE_STATUS = {
+  done: { label: "검증 완료", cls: "ok" },
+  wip: { label: "진행 중", cls: "wip" },
+  broken: { label: "오류", cls: "ng" },
+  planned: { label: "예정", cls: "plan" },
+};

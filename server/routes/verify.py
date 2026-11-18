@@ -1,11 +1,11 @@
 """검증 API — 기본 모델 통합 검증, 캐시 조회, 사용자 모델 변환."""
 import time
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Request
 from fastapi.concurrency import run_in_threadpool
 
 from rngd_pipeline import config
-from server.services import custom_convert, preset_verify
+from server.services import access, custom_convert, preset_verify
 from server.services.runlock import BUSY, RUN_LOCK
 
 router = APIRouter(prefix="/api/verify", tags=["verify"])
@@ -59,6 +59,12 @@ def _custom_convert(code: str) -> dict:
 
 
 @router.post("/custom_convert")
-async def custom_convert_api(payload: dict = Body(...)):
-    """사용자 정의 PyTorch 모델 변환·검증"""
+async def custom_convert_api(request: Request, payload: dict = Body(...)):
+    """사용자 정의 PyTorch 모델 변환·검증 (접근 토큰을 설정한 서버에서는 X-Access-Token 필요)"""
+    if access.required():
+        ip = request.client.host if request.client else ""
+        org = access.check(request.headers.get(access.HEADER, ""))
+        access.log(org, org is not None, ip)
+        if org is None:
+            return {"error": access.MESSAGE, "token_required": True}
     return await run_in_threadpool(_custom_convert, str(payload.get("code", "")))

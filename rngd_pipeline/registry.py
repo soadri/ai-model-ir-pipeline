@@ -207,3 +207,31 @@ if __name__ == "__main__":
     m = load_op_mappings()
     for k, v in m.items():
         print(f"  {k}: {v}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 대시보드 「변환 규칙」 화면이 사용하는 함수 (읽기 전용)
+# ──────────────────────────────────────────────────────────────────────────────
+
+RULE_FIELDS = ("op_name", "family", "source_op", "target_op", "dtype", "tolerance",
+               "experimental", "status", "compares", "meaning_pass", "meaning_fail", "detail")
+
+
+def _rule(row) -> dict:
+    d = {k: row[k] for k in RULE_FIELDS}
+    d["experimental"] = bool(d["experimental"])
+    return d
+
+
+def list_rules() -> list[dict]:
+    """변환 규칙 전체 (계열, 연산 이름 순)."""
+    with _con() as con:
+        rows = con.execute(f"SELECT {', '.join(RULE_FIELDS)} FROM ops ORDER BY family, op_name").fetchall()
+    return [_rule(r) for r in rows]
+
+
+def get_rule(op_name: str):
+    """연산 이름으로 변환 규칙 하나. 없으면 None."""
+    with _con() as con:
+        row = con.execute(f"SELECT {', '.join(RULE_FIELDS)} FROM ops WHERE op_name = ?", (op_name,)).fetchone()
+    return _rule(row) if row else None

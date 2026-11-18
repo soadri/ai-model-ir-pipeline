@@ -3,7 +3,7 @@ import { h } from "../dom.js";
 import { EXAMPLES } from "../examples.js";
 import { SCALES } from "../labels.js";
 
-export function renderInput(root, { scales, onPreset, onCustom, onScale }) {
+export function renderInput(root, { scales, onPreset, onCustom, onScale, tokenRequired = false }) {
   const presetBtn = h("button", { role: "tab", "aria-selected": "true" }, "기본 모델");
   const customBtn = h("button", { role: "tab", "aria-selected": "false" }, "사용자 모델");
 
@@ -31,7 +31,19 @@ export function renderInput(root, { scales, onPreset, onCustom, onScale }) {
       for (const c of chips) c.setAttribute("aria-pressed", String(c === e.currentTarget));
     },
   }, ex.title, ex.expected ? h("em", { class: ex.expected === "100%" ? "full" : "" }, ex.expected) : null));
-  const customRun = h("button", { class: "run", onclick: () => onCustom(editor.value) }, "변환 분석 실행");
+  // 접근 토큰: 토큰을 설정한 서버에서만 표시하고, 브라우저를 닫을 때까지 기억
+  let saved = "";
+  try { saved = sessionStorage.getItem("convertToken") || ""; } catch { /* 저장소를 쓸 수 없으면 매번 입력 */ }
+  const token = tokenRequired ? h("input", {
+    class: "token", type: "password", autocomplete: "off", value: saved,
+    placeholder: "접근 토큰", "aria-label": "접근 토큰",
+  }) : null;
+  const currentToken = () => {
+    const t = token?.value.trim() || "";
+    try { sessionStorage.setItem("convertToken", t); } catch { /* 무시 */ }
+    return t;
+  };
+  const customRun = h("button", { class: "run", onclick: () => onCustom(editor.value, currentToken()) }, "변환 분석 실행");
   const customPane = h("div", { hidden: true },
     h("span", { class: "field-label", style: "margin-top:0" }, "예시 불러오기"),
     h("div", { class: "examples" }, chips),
@@ -40,8 +52,13 @@ export function renderInput(root, { scales, onPreset, onCustom, onScale }) {
       h("li", {}, h("code", {}, "nn.Module"), "을 상속한 모델 클래스를 정의합니다."),
       h("li", {}, "마지막에 ", h("code", {}, "model = MyModel()"), "과 ", h("code", {}, "x = torch.randn(...)"), "을 선언합니다."),
       h("li", {}, "가중치는 무작위 초기화로 충분합니다. 변환 결과는 연산 구조로 결정됩니다.")),
+    tokenRequired ? h("label", { class: "token-field" },
+      h("span", { class: "field-label", style: "margin:0" }, "접근 토큰"), token,
+      h("span", { class: "small" }, "이 서버는 토큰이 있어야 사용자 모델을 실행합니다. 토큰은 서버 관리자에게 문의해 주세요.")) : null,
     customRun,
-    h("p", { class: "small", style: "margin:10px 0 0" }, "입력한 코드는 이 체험 서버(내 PC의 컨테이너) 안에서 실행됩니다."));
+    h("p", { class: "small", style: "margin:10px 0 0" }, tokenRequired
+      ? "입력한 코드는 이 서버에서 실행됩니다."
+      : "입력한 코드는 이 체험 서버(내 PC의 컨테이너) 안에서 실행됩니다."));
   editor.value = EXAMPLES[0].code;
   chips[0].setAttribute("aria-pressed", "true");
 

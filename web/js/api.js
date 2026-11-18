@@ -31,11 +31,16 @@ export const api = {
     return json(`api/verify/all_verify?scale=${encodeURIComponent(scale)}`);
   },
 
-  convert(code) {
+  convert(code, token) {
     if (DEMO) return demo("custom");
-    return json("api/verify/custom_convert", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }),
-    });
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["X-Access-Token"] = token;
+    return json("api/verify/custom_convert", { method: "POST", headers, body: JSON.stringify({ code }) });
+  },
+
+  registry() {
+    if (DEMO) return demo("registry");
+    return json("api/registry");
   },
 
   runs() {
