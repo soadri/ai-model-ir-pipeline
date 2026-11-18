@@ -350,3 +350,11 @@ path = "src/pilot_golden_block_dim4096r.rs"
 [[bin]]
 name = "pilot_golden_block_dim4096f"
 path = "src/pilot_golden_block_dim4096f.rs"
+
+[[bin]]
+name = "pilot_e2e_gelu_erf"
+path = "src/pilot_e2e_gelu_erf.rs"
+
+[[bin]]
+name = "custom_verify_gelu"
+path = "src/custom_verify_gelu.rs"

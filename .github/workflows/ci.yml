@@ -66,6 +66,28 @@ jobs:
       - name: 데이터 배치 연산 의미 점검 (Level 1-2 보조 검사)
         run: |
           docker run --rm ai-model-ir-pipeline:ci python -m rngd_pipeline.layout_check | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: 사용자 모델 경로 (GELU FFN, Level 3)
+        run: |
+          cat > out/gelu_ffn.py <<'PY'
+          import torch
+          import torch.nn as nn
+          torch.manual_seed(0)
+
+          class GeluFFN(nn.Module):        # GPT-2·BERT 식: Linear → GELU(erf) → Linear
+              def __init__(self, dim=64, hidden=128):
+                  super().__init__()
+                  self.up = nn.Linear(dim, hidden, bias=False)
+                  self.act = nn.GELU()
+                  self.down = nn.Linear(hidden, dim, bias=False)
+
+              def forward(self, x):
+                  return self.down(self.act(self.up(x)))
+
+          model = GeluFFN()
+          x = torch.randn(1, 8, 64)
+          PY
+          docker run --rm -v "$PWD/out:/out" ai-model-ir-pipeline:ci \
+            python -m server.cli convert /out/gelu_ffn.py --json /out/convert-gelu-ffn.json --require-pass
       - name: 결과 요약
         if: always()
         run: |
