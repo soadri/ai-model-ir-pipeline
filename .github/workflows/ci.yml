@@ -88,6 +88,29 @@ jobs:
           PY
           docker run --rm -v "$PWD/out:/out" ai-model-ir-pipeline:ci \
             python -m server.cli convert /out/gelu_ffn.py --json /out/convert-gelu-ffn.json --require-pass
+      - name: 사용자 모델 경로 (ReGLU FFN, Level 3)
+        run: |
+          cat > out/reglu_ffn.py <<'PY'
+          import torch
+          import torch.nn as nn
+          import torch.nn.functional as F
+          torch.manual_seed(0)
+
+          class ReGLU(nn.Module):          # PaLM 식: gate → ReLU(F.relu) → ×up → down
+              def __init__(self, dim=64, hidden=128):
+                  super().__init__()
+                  self.gate = nn.Linear(dim, hidden, bias=False)
+                  self.up = nn.Linear(dim, hidden, bias=False)
+                  self.down = nn.Linear(hidden, dim, bias=False)
+
+              def forward(self, x):
+                  return self.down(F.relu(self.gate(x)) * self.up(x))
+
+          model = ReGLU()
+          x = torch.randn(1, 8, 64)
+          PY
+          docker run --rm -v "$PWD/out:/out" ai-model-ir-pipeline:ci \
+            python -m server.cli convert /out/reglu_ffn.py --json /out/convert-reglu-ffn.json --require-pass
       - name: 결과 요약
         if: always()
         run: |

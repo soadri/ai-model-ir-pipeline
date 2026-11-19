@@ -50,3 +50,5 @@ pub mod test_k256_gemm_kernel;
 pub mod gemm_m16_k256_kernel;
 pub mod pilot_e2e_gelu_erf_kernel;
 pub mod custom_gelu_small_kernel;
+pub mod pilot_e2e_relu_kernel;
+pub mod custom_relu_small_kernel;

@@ -22,7 +22,7 @@ ARG RUST_TOOLCHAIN=nightly-2026-05-01
 ARG CARGO_BUILD_JOBS=4
 ARG TRIAL_KERNELS="pilot_golden_ffn_e2e pilot_golden_rmsnorm_e2e pilot_golden_attn_e2e pilot_golden_block_e2e \
 pilot_golden_ffn_dim64 pilot_golden_rmsnorm_dim64 pilot_golden_attn_dim64 pilot_golden_block_dim64 \
-pilot_golden_ffn_gate custom_verify_elementwise custom_verify_silu custom_verify_gelu"
+pilot_golden_ffn_gate custom_verify_elementwise custom_verify_silu custom_verify_gelu custom_verify_relu"
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \

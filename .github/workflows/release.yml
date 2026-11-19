@@ -101,6 +101,30 @@ jobs:
           docker run --rm -v "$PWD/out:/out" "$IMAGE:$VERSION" \
             python -m server.cli convert /out/gelu_ffn.py --json /out/convert-gelu-ffn.json --require-pass
 
+      - name: 검증 — 사용자 모델 경로 (ReGLU FFN)
+        run: |
+          cat > out/reglu_ffn.py <<'PY'
+          import torch
+          import torch.nn as nn
+          import torch.nn.functional as F
+          torch.manual_seed(0)
+
+          class ReGLU(nn.Module):          # PaLM 식: gate → ReLU(F.relu) → ×up → down
+              def __init__(self, dim=64, hidden=128):
+                  super().__init__()
+                  self.gate = nn.Linear(dim, hidden, bias=False)
+                  self.up = nn.Linear(dim, hidden, bias=False)
+                  self.down = nn.Linear(hidden, dim, bias=False)
+
+              def forward(self, x):
+                  return self.down(F.relu(self.gate(x)) * self.up(x))
+
+          model = ReGLU()
+          x = torch.randn(1, 8, 64)
+          PY
+          docker run --rm -v "$PWD/out:/out" "$IMAGE:$VERSION" \
+            python -m server.cli convert /out/reglu_ffn.py --json /out/convert-reglu-ffn.json --require-pass
+
       # 검증을 모두 통과한 경우에만 아래 배포 단계로 넘어옵니다
       - uses: docker/login-action@v3
         with:
@@ -191,6 +215,6 @@ jobs:
             echo "| torch-mlir | 20240127.1096 ([재구성 wheel](https://github.com/${{ github.repository }}/releases/tag/build-deps-1)) |"
             echo "| NPU 시뮬레이터 | furiosa-opt 0.10.0 |"
           } > release-notes.md
-          rm -f out/sample_model.py out/gelu_ffn.py
+          rm -f out/sample_model.py out/gelu_ffn.py out/reglu_ffn.py
           gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --latest out/*.json
           cat release-notes.md >> "$GITHUB_STEP_SUMMARY"

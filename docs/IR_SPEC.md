@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |:--|:--|
-| 명세 버전 | 0.3 |
+| 명세 버전 | 0.4 |
 | 기준 구현 | 파이프라인 v0.2.0 (`rngd_pipeline/e2e_pipeline.py`의 `rewrite_to_rngd`, `insert_optimization_markers`) |
 | 변환 규칙 | `registry/rngd_registry.sql` (25개 항목) |
 | 작성 | 한국전자기술연구원(KETI) |
@@ -93,9 +93,10 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | `pow2` | 제곱 | 1개 | 지수가 2인 `math.powf` |
 | `negf` | 부호 반전 | 1개 | `arith.negf` (RoPE의 rotate_half 등) |
 | `sigmoid` | 1 / (1 + e⁻ˣ) | 1개 | `arith.negf`, `math.exp`, `arith.addf`, `arith.divf`로 이루어진 본문 |
+| `relu` | max(x, 0) (`nn.ReLU`, `F.relu`, `torch.clamp(min=0)`) | 1개 | `arith.cmpf`(x와 0 비교), `arith.select`(x 또는 0)로 이루어진 본문 |
 | `gelu` | x·0.5·(1 + erf(x/√2)) (PyTorch `nn.GELU()` 기본, erf 방식) | 1개 | `arith.divf`(√2), `math.erf`, `arith.addf`(1), `arith.mulf`(0.5), `arith.mulf`(x)로 이루어진 본문 |
 
-- **본문 판별**: `linalg.generic`의 본문(body)에 위 계산 중 하나만 있으면 해당 `op`로 바꿉니다. 본문이 여러 계산으로 이루어진 경우는 `sigmoid`와 `gelu`만 인식하며, 그 밖의 조합은 변환하지 않고 미분류로 남깁니다. `gelu`는 연산 순서, 상수 값(√2, 1, 0.5), 데이터 흐름(같은 x를 나누고 다시 곱함)을 모두 확인해 비슷한 다른 식을 GELU로 판별하지 않습니다. tanh 근사 GELU(`approximate="tanh"`)는 고정한 torch-mlir 버전에서 `linalg`로 내려가지 않아 대상이 아닙니다.
+- **본문 판별**: `linalg.generic`의 본문(body)에 위 계산 중 하나만 있으면 해당 `op`로 바꿉니다. 본문이 여러 계산으로 이루어진 경우는 `sigmoid`, `gelu`, `relu`만 인식하며, 그 밖의 조합은 변환하지 않고 미분류로 남깁니다. `gelu`는 연산 순서, 상수 값(√2, 1, 0.5), 데이터 흐름(같은 x를 나누고 다시 곱함)을 모두 확인해 비슷한 다른 식을 GELU로 판별하지 않습니다. tanh 근사 GELU(`approximate="tanh"`)는 고정한 torch-mlir 버전에서 `linalg`로 내려가지 않아 대상이 아닙니다. `relu`는 비교 상수가 0이고 고르는 값이 같은 x와 0일 때만 인식하며(`max(x, 1)`, Leaky ReLU 등은 제외), 비교 방향은 `arith.cmpf`의 `predicate` 속성으로 읽습니다.
 - **크기가 다른 피연산자**: 두 피연산자의 shape이 다르면 크기 1인 축을 상대 쪽 크기로 늘려 계산합니다. 예를 들어 RMSNorm의 정규화는 `[1, 8, 64]`와 `[1, 8, 1]`을 곱합니다.
 - **상수와의 연산**: torch-mlir가 상수와의 연산을 "상수로 채운 출력 텐서 + 입력 하나"로 표현하는 경우, 그 출력 텐서를 두 번째 피연산자로 바꿔 이항 연산으로 만듭니다.
 
@@ -182,11 +183,14 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | Softmax | `fused_softmax` | 최댓값, 빼기, 지수, 합, 나누기 |
 | SiLU | `fused_silu` | sigmoid와 곱 |
 | GELU | `fused_gelu` | `gelu` 연산 |
+| ReLU | `fused_relu` | `relu` 연산 |
 | Residual | `fused_residual_add` | 잔차 더하기 |
 | Attention | `fused_attention` | Q·K·V 프로젝션, RoPE, 점수 계산, Softmax, 가중합, 출력 프로젝션까지 포함한 블록 |
 | FFN (SwiGLU) | `fused_swiglu_ffn` | gate·up 프로젝션, SiLU, 곱, down 프로젝션 (Llama 등) |
 | FFN (GeGLU) | `fused_geglu_ffn` | gate·up 프로젝션, GELU, 곱, down 프로젝션 (Gemma 등) |
 | FFN (GELU) | `fused_gelu_ffn` | up 프로젝션, GELU, down 프로젝션 (GPT-2, BERT 등) |
+| FFN (ReGLU) | `fused_reglu_ffn` | gate·up 프로젝션, ReLU, 곱, down 프로젝션 (PaLM 등) |
+| FFN (ReLU) | `fused_relu_ffn` | up 프로젝션, ReLU, down 프로젝션 |
 
 `rngd.exec = "cpu_fallback"`은 연동 중인 시뮬레이터 버전(furiosa-opt 0.10)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산(현재 `rngd.reduce`)에 붙습니다.
 
@@ -253,7 +257,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | 항목 | 내용 | 대응 계획 |
 |:--|:--|:--|
 | 축소 축 미기록 | `rngd.reduce`는 축소 축을 속성으로 남기지 않습니다. 입력 축의 크기가 원래 1이면 IR만으로는 축소 축을 알 수 없습니다(커널 명세의 `reduce_axes`에는 남음). | `axes` 속성 추가 |
-| 복합 본문 | 원소 단위 본문 중 `sigmoid`, `gelu` 외의 복합 계산은 변환하지 않습니다. tanh 근사 GELU는 torch-mlir 고정 버전의 한계로 대상이 아닙니다. | 사용 빈도가 높은 조합부터 규칙 추가 |
+| 복합 본문 | 원소 단위 본문 중 `sigmoid`, `gelu`, `relu` 외의 복합 계산은 변환하지 않습니다. tanh 근사 GELU는 torch-mlir 고정 버전의 한계로 대상이 아닙니다. | 사용 빈도가 높은 조합부터 규칙 추가 |
 | SiLU | SiLU는 `sigmoid`와 `mul` 두 연산으로 표현되며, 하나의 `op = "silu"` 연산으로 합치지는 않습니다. | 복합 패턴 식별 결과를 IR 표시로 연결할 때 함께 검토 |
 | 미생성 연산 | `rngd.fill`, `rngd.conv2d`는 정의만 있고 만들지 않습니다(4.9절). | 대상 모델 확대 시 추가 |
 
@@ -266,3 +270,4 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | 0.1 | v0.1.2 | 첫 공개. `rngd.transpose`의 `perm`, `rngd.broadcast`의 `broadcast_dims` 포함 (v0.1.1까지는 두 속성이 없었고, 전치·확장을 shape으로 판별) |
 | 0.2 | v0.2.0 | 최적화 마커 추가 (`rngd.fusion`, `rngd.kernel_hint`, `rngd.exec`), `rngd.elementwise`에 `negf`(부호 반전) 추가 |
 | 0.3 | v0.5.0 | `rngd.elementwise`에 `gelu`(erf 방식) 추가, 복합 패턴에 GELU와 GELU 계열 FFN(GELU, GeGLU) 및 커널 후보(`fused_gelu`, `fused_gelu_ffn`, `fused_geglu_ffn`) 추가 |
+| 0.4 | v0.6.0 | `rngd.elementwise`에 `relu` 추가, 복합 패턴에 ReLU와 FFN(ReGLU, ReLU) 및 커널 후보(`fused_relu`, `fused_reglu_ffn`, `fused_relu_ffn`) 추가 |

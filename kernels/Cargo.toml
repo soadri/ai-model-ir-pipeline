@@ -358,3 +358,11 @@ path = "src/pilot_e2e_gelu_erf.rs"
 [[bin]]
 name = "custom_verify_gelu"
 path = "src/custom_verify_gelu.rs"
+
+[[bin]]
+name = "pilot_e2e_relu"
+path = "src/pilot_e2e_relu.rs"
+
+[[bin]]
+name = "custom_verify_relu"
+path = "src/custom_verify_relu.rs"
