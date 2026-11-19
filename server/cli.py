@@ -87,6 +87,11 @@ def cmd_convert(args) -> int:
     print(f"Level 3 NPU 시뮬레이터 {summary.get('passed', 0)}/{summary.get('tested', 0)} 통과")
     print("=" * 60 + f"\n소요 시간 {result['elapsed_s']}초")
     _save(result, args.json)
+    if getattr(args, "require_pass", False):
+        tested, passed = summary.get("tested", 0), summary.get("passed", 0)
+        if not (l12.get("passed") and tested > 0 and passed == tested):
+            print("검증을 모두 통과하지 못했습니다 (--require-pass).")
+            return 1
     return 0
 
 
@@ -100,6 +105,8 @@ def main() -> int:
     c = sub.add_parser("convert", help="사용자 정의 모델 파일 변환과 검증 (model, x 변수 필요)")
     c.add_argument("model_file")
     c.add_argument("--json", help="전체 결과를 저장할 파일")
+    c.add_argument("--require-pass", action="store_true",
+                   help="Level 1-2와 Level 3를 모두 통과하지 못하면 종료 코드 1로 끝냄 (CI·Release용)")
     args = ap.parse_args()
     return {"info": cmd_info, "verify": cmd_verify, "convert": cmd_convert}[args.command](args)
 

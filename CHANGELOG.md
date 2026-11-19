@@ -2,6 +2,19 @@
 
 이 프로젝트의 버전별 변경 사항입니다. 버전 태그를 만들면 해당 버전의 내용이 Release 노트에 자동으로 들어갑니다.
 
+## v0.5.0
+
+- **GELU를 지원합니다.** PyTorch 기본 `nn.GELU()`(erf 방식)가 표준 IR에서 만드는 `linalg.generic` 본문(`x/√2 → erf → +1 → ×0.5 → ×x`)을 `rngd.elementwise`(`op = "gelu"`) 하나로 변환합니다. 연산 순서, 상수 값(√2, 1, 0.5), 데이터 흐름(같은 x를 나누고 다시 곱함)을 모두 확인해, 비슷한 다른 식을 GELU로 판별하지 않습니다.
+- GELU 커널을 벡터 엔진 1패스로 구현했습니다(`x 보관 → ×1/√2 → Erf → FMA(×0.5+0.5) → ×x`). 한 패스에서 ALU마다 한 번만 쓸 수 있어 `+1`과 `×0.5`를 FMA 하나로 합쳤습니다. 2048개 시험에서 PyTorch 대비 최대 절대 오차는 9.5e-7입니다.
+- 사용자 모델 Level 3에서 `nn.GELU`(erf 방식)와 `F.gelu` 호출을 잡아 GELU 커널로 검증합니다.
+- 복합 패턴에 GELU, FFN (GELU: GPT-2·BERT 식), FFN (GeGLU: Gemma 식)을 추가하고, 그룹별 특화 커널 후보(`fused_gelu`, `fused_gelu_ffn`, `fused_geglu_ffn`)를 최적화 마커에 기록합니다. Llama(SwiGLU)의 패턴 식별 결과는 이전과 같습니다.
+- 대시보드 예시의 변환 커버리지가 바뀌었습니다: GeGLU FFN 40% → 100%, GELU FFN 25% → 100%, LN+GELU+Residual 72% → 100%.
+- 변환 규칙 레지스트리의 GELU를 「예정」에서 「검증 완료」로 바꾸고, NPU 특화 IR 명세를 0.3으로 갱신했습니다.
+- `server.cli convert`에 `--require-pass`를 추가했습니다. Level 1-2와 Level 3를 모두 통과하지 못하면 종료 코드 1로 끝납니다. 이전에는 사용자 모델 검증이 실패해도 항상 0으로 끝나 Release의 사용자 모델 검증이 배포를 막지 못했는데, 이제 CI와 Release가 이 옵션으로 SwiGLU·GELU FFN 경로를 검증합니다.
+- tanh 근사 GELU(`approximate="tanh"`)는 고정한 torch-mlir 버전에서 표준 IR로 내려가지 않아 대상이 아닙니다.
+- 체험 안내의 이미지 태그를 `0.5`로 바꿨습니다. 기존 `0.4` 태그는 v0.4.0을 그대로 가리킵니다.
+- README 상단 배지의 시뮬레이터 버전을 furiosa-opt 0.10으로 고쳤습니다(v0.4.0에서 빠짐).
+
 ## v0.4.0
 
 - NPU 시뮬레이터를 furiosa-opt **0.10.0**으로 갱신했습니다(이전 0.6.0). Rust 툴체인은 그대로(nightly-2026-05-01)입니다.

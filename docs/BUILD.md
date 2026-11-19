@@ -124,7 +124,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"
 # 토큰 파일을 쓰는 예 (컨테이너의 /data 볼륨에 둠)
 echo "nota:<만든 토큰>" >> convert_tokens && chmod 600 convert_tokens
 docker run -d -p 8100:8100 -v "$PWD:/data" -e RNGD_CONVERT_TOKEN_FILE=/data/convert_tokens \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.4
+  ghcr.io/soadri/ai-model-ir-pipeline:0.5
 ```
 
 토큰을 설정한 서버에서는 대시보드의 사용자 모델 화면에 토큰 입력칸이 나타나고, API로 호출할 때는 `X-Access-Token` 헤더에 토큰을 넣습니다.

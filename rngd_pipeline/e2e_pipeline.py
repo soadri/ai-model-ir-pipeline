@@ -133,6 +133,51 @@ NAMED_CONTRACTION_OPS = {
 }
 
 
+# =====================================================================
+# GELU (PyTorch nn.GELU 기본, erf 방식) 본문 판별
+# =====================================================================
+# torch-mlir는 nn.GELU()를 linalg.generic 하나로 내리며, 본문은 다음 순서다.
+#   t = x / √2 ; e = erf(t) ; s = e + 1 ; h = s * 0.5 ; y = x * h
+# 연산 순서, 상수 값, 데이터 흐름(같은 x를 나누고 다시 곱함)을 모두 확인해 다른 조합을 잘못 판별하지 않는다.
+# (tanh 근사 GELU는 고정한 torch-mlir 버전에서 linalg로 내려가지 않아 대상이 아님)
+GELU_ERF_SEQUENCE = ["arith.divf", "math.erf", "arith.addf", "arith.mulf", "arith.mulf"]
+
+
+def _const_float(value):
+    """arith.constant가 만든 실수 상수 값. 상수가 아니면 None"""
+    try:
+        owner = value.owner
+        if str(owner.name) != "arith.constant":
+            return None
+        return float(FloatAttr(owner.attributes["value"]).value)
+    except Exception:  # noqa: BLE001 — 블록 인자 등은 상수가 아님
+        return None
+
+
+def _match_gelu_erf(body_block) -> bool:
+    ops = [o for o in body_block.operations if str(o.name) not in ("linalg.yield", "arith.constant")]
+    if [str(o.name) for o in ops] != GELU_ERF_SEQUENCE:
+        return False
+    try:
+        x = body_block.arguments[0]
+        div, erf, add, mul_half, mul_x = ops
+        near = lambda v, ref: v is not None and abs(v - ref) < 1e-5
+        if not (div.operands[0] == x and near(_const_float(div.operands[1]), 1.4142135623730951)):
+            return False
+        if erf.operands[0] != div.results[0]:
+            return False
+        a, b = add.operands
+        if not ((a == erf.results[0] and near(_const_float(b), 1.0)) or (b == erf.results[0] and near(_const_float(a), 1.0))):
+            return False
+        a, b = mul_half.operands
+        if not ((a == add.results[0] and near(_const_float(b), 0.5)) or (b == add.results[0] and near(_const_float(a), 0.5))):
+            return False
+        a, b = mul_x.operands
+        return (a == x and b == mul_half.results[0]) or (b == x and a == mul_half.results[0])
+    except Exception:  # noqa: BLE001
+        return False
+
+
 @dataclass
 class RngdSpec:
     family: Literal["elementwise", "contraction", "reduce", "layout"]
@@ -208,6 +253,35 @@ def rewrite_to_rngd(module: Module):
 
             _cur["ann_after"] = [
                 ("rngd.elementwise", 'sigmoid: FpUnaryOp::Sigmoid 단독 구현'),
+            ]
+            _cur["spec"] = RngdSpec(family="elementwise", rngd_op=rngd_op_name, shape=shape)
+            return True
+
+        # --- 단항(unary) elementwise: GELU (erf 방식, divf+erf+addf+mulf+mulf 복합 패턴) ---
+        if num_ins == 1 and _match_gelu_erf(body_block):
+            lhs = op.operands[0]
+            result_type = op.results[0].type
+            shape = list(RankedTensorType(result_type).shape)
+            rngd_op_name = "gelu"
+
+            _cur["ann_before"] = [
+                ("math.erf", "GELU 블록 감지 — x/√2 → erf → +1 → ×0.5 → ×x → rngd.elementwise(gelu)"),
+                ("linalg.generic", "이 블록 전체가 rngd.elementwise(gelu)로 대체됨"),
+            ]
+
+            with InsertionPoint(op):
+                new_op = Operation.create(
+                    "rngd.elementwise",
+                    results=[result_type],
+                    operands=[lhs],
+                    attributes={"op": StringAttr.get(rngd_op_name)},
+                    loc=op.location,
+                )
+            op.results[0].replace_all_uses_with(new_op.results[0])
+            op.erase()
+
+            _cur["ann_after"] = [
+                ("rngd.elementwise", "gelu: x 보관 → ×1/√2 → Erf → FMA(×0.5+0.5) → ×x, 벡터 엔진 1패스"),
             ]
             _cur["spec"] = RngdSpec(family="elementwise", rngd_op=rngd_op_name, shape=shape)
             return True
@@ -1882,6 +1956,7 @@ class FusionGroup:
     name: str           # RMSNORM, SOFTMAX, SILU, FFN, RESIDUAL 등
     node_indices: list   # DfNode.idx 리스트
     description: str     # 사람이 읽을 수 있는 설명
+    kernel_hint: Optional[str] = None  # 그룹별 특화 커널 후보. 없으면 FUSION_KERNEL_HINTS[name]
 
 
 def detect_fusion_patterns(nodes: list) -> list:
@@ -2145,6 +2220,56 @@ def detect_fusion_patterns(nodes: list) -> list:
             description=f"FFN (SwiGLU): gate→SiLU→up→gate·up→down — {len(ffn_indices)} ops",
         ))
 
+    # ── GELU 감지 ──
+    # 패턴: rngd.elementwise(gelu) 하나 (erf 방식 GELU 본문 전체가 변환 단계에서 연산 하나로 바뀜)
+    gemm_types = ("rngd.batch_gemm", "rngd.gemm")
+    for n in nodes:
+        if _attr(n.idx) == "gelu":
+            groups.append(FusionGroup(
+                name="GELU",
+                node_indices=[n.idx],
+                description="GELU (erf): x·0.5·(1+erf(x/√2)) — 1 op, 벡터 엔진 1패스",
+            ))
+
+    # ── GELU 계열 FFN 감지 ──
+    # GeGLU (Gemma): gemm(gate) → gelu, gemm(up), mul(gelu·up) → gemm(down)
+    # GELU FFN (GPT-2, BERT): gemm(up) → gelu → gemm(down)
+    # gemm 결과는 텐서 모양 변환을 거쳐 다음 연산에 들어가므로, SwiGLU와 같이 연산 순서로 앞뒤 gemm을 찾는다.
+    for gg in [g for g in groups if g.name == "GELU"]:
+        gelu = idx_to_node[gg.node_indices[0]]
+        before = [n for n in nodes if n.idx < gelu.idx]
+        after = [n for n in nodes if n.idx > gelu.idx]
+        first_gemm = next((n for n in reversed(before) if n.op_type in gemm_types), None)
+        if first_gemm is None:
+            continue
+        # gelu 출력을 바로 받는 곱셈이 있으면 GeGLU
+        gate_mul = next((n for n in after if n.op_attr == "mul" and gelu.ssa_name in n.inputs), None)
+        if gate_mul is not None:
+            up_gemm = next((n for n in nodes if first_gemm.idx < n.idx < gate_mul.idx and n.op_type in gemm_types), None)
+            down_gemm = next((n for n in nodes if n.idx > gate_mul.idx and n.op_type in gemm_types), None)
+            if up_gemm is None or down_gemm is None:
+                continue
+            idxs = [n.idx for n in nodes if first_gemm.idx <= n.idx <= down_gemm.idx]
+            groups.append(FusionGroup(
+                name="FFN",
+                node_indices=idxs,
+                description=f"FFN (GeGLU): gate→GELU→up→gate·up→down — {len(idxs)} ops",
+                kernel_hint="fused_geglu_ffn",
+            ))
+            continue
+        # 그렇지 않으면 gelu 바로 뒤의 gemm (사이에 계산 연산이 없어야 함)
+        down_gemm = after[0] if after and after[0].op_type in gemm_types else None
+        between_up = [n for n in nodes if first_gemm.idx < n.idx < gelu.idx]
+        if down_gemm is None or between_up:
+            continue
+        idxs = [first_gemm.idx, gelu.idx, down_gemm.idx]
+        groups.append(FusionGroup(
+            name="FFN",
+            node_indices=idxs,
+            description="FFN (GELU): up→GELU→down — 3 ops",
+            kernel_hint="fused_gelu_ffn",
+        ))
+
     return groups
 
 
@@ -2159,7 +2284,8 @@ FUSION_KERNEL_HINTS = {
     "SILU": "fused_silu",
     "RESIDUAL": "fused_residual_add",
     "ATTENTION": "fused_attention",   # QKV 프로젝션, RoPE, Softmax, 출력 프로젝션까지 포함한 블록 단위
-    "FFN": "fused_swiglu_ffn",
+    "FFN": "fused_swiglu_ffn",          # GELU 계열 FFN은 그룹에 fused_gelu_ffn / fused_geglu_ffn을 따로 지정
+    "GELU": "fused_gelu",
 }
 
 # 연동 중인 시뮬레이터 버전(furiosa-opt 0.10)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산
@@ -2200,7 +2326,7 @@ def insert_optimization_markers(module: Module, groups: Optional[list] = None) -
         k = seen.get(g.name, 0)
         seen[g.name] = k + 1
         gid = f"{g.name.lower()}_{k}"
-        hint = FUSION_KERNEL_HINTS.get(g.name, f"fused_{g.name.lower()}")
+        hint = g.kernel_hint or FUSION_KERNEL_HINTS.get(g.name, f"fused_{g.name.lower()}")
         for idx in g.node_indices:
             if 0 <= idx < len(rngd_ops):
                 membership[idx].append((gid, hint))

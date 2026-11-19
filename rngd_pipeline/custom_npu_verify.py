@@ -574,8 +574,95 @@ def verify_custom_silu(model, x):
     }
 
 
+def verify_custom_gelu(model, x):
+    """커스텀 모델에서 GELU 활성화 검증 (PyTorch 기본 erf 방식)
+
+    A=8 GELU 커널(custom_gelu_small_kernel, 1패스)로 검증한다.
+    tanh 근사(approximate="tanh")는 고정한 torch-mlir 버전에서 표준 IR로 내려가지 않아 대상에서 뺀다.
+    """
+    import math
+    import torch.nn.functional as F
+
+    results = []
+    captures = {}
+    hooks = []
+
+    # 방법 1: nn.GELU 모듈 hook (erf 방식만)
+    def make_hook(name):
+        def hook_fn(module, input, output):
+            inp = input[0] if isinstance(input, tuple) else input
+            if isinstance(inp, torch.Tensor):
+                captures[name] = {"input": inp.detach().clone()}
+        return hook_fn
+
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.GELU) and getattr(module, "approximate", "none") == "none":
+            hooks.append(module.register_forward_hook(make_hook(name if name else "_root")))
+
+    # 방법 2: F.gelu() 함수 호출 캡처 (nn.GELU 내부 호출과 겹치지 않도록 모듈 실행 중에는 건너뜀)
+    _original_gelu = F.gelu
+    _count = [0]
+    _in_module = [False]
+
+    def _patched_gelu(input, approximate="none"):
+        result = _original_gelu(input, approximate=approximate)
+        if not _in_module[0] and approximate == "none" and isinstance(input, torch.Tensor):
+            captures[f"F.gelu_{_count[0]}"] = {"input": input.detach().clone()}
+            _count[0] += 1
+        return result
+
+    def _enter(module, args):
+        _in_module[0] = True
+
+    def _leave(module, args, output):
+        _in_module[0] = False
+
+    for module in model.modules():
+        if isinstance(module, torch.nn.GELU):
+            hooks.append(module.register_forward_pre_hook(_enter))
+            hooks.append(module.register_forward_hook(_leave))
+
+    F.gelu = _patched_gelu
+    try:
+        with torch.no_grad():
+            model(x)
+    finally:
+        F.gelu = _original_gelu
+    for h in hooks:
+        h.remove()
+
+    for name, cap in captures.items():
+        inp = cap["input"].flatten()
+        if inp.numel() < 8:
+            padded = torch.zeros(8)
+            padded[:inp.numel()] = inp
+            inp = padded
+        else:
+            inp = inp[:8]
+        inp_list = inp.tolist()
+        expected = [0.5 * v * (1.0 + math.erf(v / math.sqrt(2.0))) for v in inp_list]
+        inputs = {
+            "custom_gelu_input.bin": _f32_bytes(inp_list),
+            "custom_gelu_expected.bin": _f32_bytes(expected),
+        }
+        npu_result = _run_custom_bin("custom_verify_gelu", inputs)
+        results.append({
+            "layer": name,
+            "type": "GELU",
+            "shape": f"A={len(inp_list)}",
+            "npu_result": npu_result,
+        })
+
+    tested = len(results)
+    passed = sum(1 for r in results if r["npu_result"]["passed"])
+    return {
+        "results": results,
+        "summary": {"tested": tested, "passed": passed, "all_passed": tested == passed and tested > 0}
+    }
+
+
 def verify_custom_model_full(model, x):
-    """커스텀 모델 전체 Level 3 검증 — Linear + RMSNorm + SiLU
+    """커스텀 모델 전체 Level 3 검증 — Linear + RMSNorm + SiLU + GELU
     
     Returns:
         통합 결과 dict
@@ -598,6 +685,12 @@ def verify_custom_model_full(model, x):
     silu_result = verify_custom_silu(model, x)
     for r in silu_result["results"]:
         r["op_type"] = "SiLU (elementwise)"
+        all_results.append(r)
+
+    # GELU 검증 (erf 방식)
+    gelu_result = verify_custom_gelu(model, x)
+    for r in gelu_result["results"]:
+        r["op_type"] = "GELU (elementwise)"
         all_results.append(r)
     
     tested = sum(1 for r in all_results if r.get("npu_result"))
