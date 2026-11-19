@@ -2,6 +2,19 @@
 
 이 프로젝트의 버전별 변경 사항입니다. 버전 태그를 만들면 해당 버전의 내용이 Release 노트에 자동으로 들어갑니다.
 
+## v0.6.0
+
+- **ReLU를 지원합니다.** ReLU가 표준 IR에서 만드는 `linalg.generic` 본문 두 가지(`nn.ReLU`·`F.relu`: `cmpf ugt(x, 0) → select(c, x, 0)`, `torch.clamp(min=0)`: `cmpf ult(x, 0) → select(c, 0, x)`)를 `rngd.elementwise`(`op = "relu"`) 하나로 변환합니다. 비교 상수가 0이고 고르는 값이 같은 x와 0일 때만 판별해, `max(x, 1)`이나 Leaky ReLU는 ReLU로 보지 않습니다.
+- ReLU 커널은 벡터 엔진 Clip ALU의 `max(x, 0)` 하나로 계산합니다(실수 ALU를 쓰지 않음). 2048개 시험(0·-0·±1e-30 경계 값 포함)에서 PyTorch와 오차가 0입니다.
+- 사용자 모델 Level 3에서 `nn.ReLU`와 `F.relu` 호출을 잡아 ReLU 커널로 검증합니다. `inplace=True`는 입력을 덮어쓰므로 실행 전에 입력을 잡습니다.
+- 복합 패턴에 ReLU, FFN (ReGLU: PaLM 식), FFN (ReLU)을 추가하고, 커널 후보(`fused_relu`, `fused_reglu_ffn`, `fused_relu_ffn`)를 기록합니다. GELU 계열 FFN 식별 코드를 활성화 함수별로 일반화했으며, GELU·SwiGLU·Llama의 식별 결과는 이전과 같습니다.
+- 대시보드 예시 ReGLU FFN의 변환 커버리지가 80%에서 100%로 바뀌었습니다. 대표 모델 구조 12종이 모두 완전 지원됩니다.
+- 변환 규칙 레지스트리에 ReLU(26번째)를 추가하고, NPU 특화 IR 명세를 0.4로 갱신했습니다.
+- CI와 Release에 ReGLU FFN 사용자 모델 경로(`F.relu` 함수 호출) 검증을 추가했습니다.
+- 체험 안내의 이미지 태그를 `0.6`으로 바꿨습니다. 기존 `0.5` 태그는 v0.5.0을 그대로 가리킵니다.
+- 문서를 최신 상태로 정리했습니다. README(지원 패턴, 변환 규칙 레지스트리, 접근 토큰 안내, 현재 한계), 체험 가이드(기본 모델 연산 수 49·52개, 예시, 변환 규칙 화면), 빌드 가이드(커널 13개, furiosa-opt 0.10, 사용자 모델 경로 검증), 기여 가이드, 지원 버전 정책(버전 숫자를 적어 둔 표현 일반화, furiosa-opt 갱신 사례), NPU 특화 IR 명세(기준 구현 v0.6.0, 규칙 26개)를 고치고, 「재작성」을 「변환」으로 표현을 정리했습니다.
+- 소개 페이지의 검증 기록에 사용자 모델 경로 세 가지(SwiGLU, GELU FFN, ReGLU FFN)를 모두 표시합니다.
+
 ## v0.5.0
 
 - **GELU를 지원합니다.** PyTorch 기본 `nn.GELU()`(erf 방식)가 표준 IR에서 만드는 `linalg.generic` 본문(`x/√2 → erf → +1 → ×0.5 → ×x`)을 `rngd.elementwise`(`op = "gelu"`) 하나로 변환합니다. 연산 순서, 상수 값(√2, 1, 0.5), 데이터 흐름(같은 x를 나누고 다시 곱함)을 모두 확인해, 비슷한 다른 식을 GELU로 판별하지 않습니다.

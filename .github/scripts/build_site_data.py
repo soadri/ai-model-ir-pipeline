@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import upstream_watch as uw  # noqa: E402
 
 REPO = uw.REPO
-ASSETS = {"verify-sim_small.json": "sim_small", "verify-sim_mid.json": "sim_mid", "convert-swiglu.json": "custom"}
+ASSETS = {"verify-sim_small.json": "sim_small", "verify-sim_mid.json": "sim_mid", "convert-swiglu.json": "custom",
+          "convert-gelu-ffn.json": "custom_gelu", "convert-reglu-ffn.json": "custom_reglu"}
 
 
 def download_json(url):
@@ -69,7 +70,7 @@ def releases():
                 continue
             try:
                 data = download_json(asset["url"])
-                item["checks"][kind] = summarize_convert(data) if kind == "custom" else summarize_verify(data)
+                item["checks"][kind] = summarize_convert(data) if kind.startswith("custom") else summarize_verify(data)
             except Exception as e:  # noqa: BLE001
                 item["checks"][kind] = {"error": str(e)}
         out.append(item)

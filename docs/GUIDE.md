@@ -32,7 +32,7 @@ docker --version
 아래 한 줄로 이미지를 받고 체험 서버를 실행합니다. 처음에는 이미지(약 380MB)를 내려받느라 1~3분 정도 걸립니다.
 
 ```bash
-docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.5
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.6
 ```
 
 `Uvicorn running on http://0.0.0.0:8100` 메시지가 나오면 브라우저에서 **http://localhost:8100** 에 접속합니다. 종료하려면 터미널에서 `Ctrl+C`를 누르세요.
@@ -50,8 +50,8 @@ docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.5
 
 | 검증 규모 | 정상 결과 | 소요 시간 |
 |:--|:--|:--|
-| 기본 규모 (dim 16) | 커버리지 100%, NPU dialect 연산 45개, Level 1-2 12/12, Level 3 5/5 | 약 15초 |
-| 중간 규모 GQA (dim 64) | 커버리지 100%, NPU dialect 연산 50개, Level 1-2 12/12, Level 3 5/5 | 약 30초 |
+| 기본 규모 (dim 16) | 커버리지 100%, NPU dialect 연산 49개, Level 1-2 12/12, Level 3 5/5 | 약 15초 |
+| 중간 규모 GQA (dim 64) | 커버리지 100%, NPU dialect 연산 52개, Level 1-2 12/12, Level 3 5/5 | 약 30초 |
 
 결과 화면의 **변환 단계**에서 PyTorch 모델이 표준 MLIR(linalg)을 거쳐 NPU 특화 IR로 낮아지는 과정을, **IR 보기**에서 변환된 연산 목록과 IR 전체를 확인할 수 있습니다.
 
@@ -62,10 +62,15 @@ docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.5
 | 예시 | 예상 커버리지 | 볼 것 |
 |:--|:--|:--|
 | SwiGLU FFN · Llama | 100% | 모든 연산이 NPU dialect 연산으로 변환. `nn.Linear`의 가중치 transpose와 행렬 곱이 `transpose_rhs` 속성을 가진 하나의 `gemm`으로 결합 |
-| GELU FFN · GPT-2 | 25% | **아직 변환하지 못한 연산**에 GELU가 복합 연산으로 표시되고, 구성 연산과 이유가 함께 나옴 |
+| GELU FFN · GPT-2 | 100% | GELU가 표준 IR에서 기본 연산 5개로 풀렸다가 `gelu` 연산 하나로 합쳐지고, GELU·FFN 패턴으로 식별 |
+| MoE+SwiGLU · Mixtral | 92% | **아직 변환하지 못한 연산**에 반복문 인덱스 계산(정수→실수 변환)이 표시되고, 구성 연산과 이유가 함께 나옴 |
 | GQA Attention · Llama | 100% | Q·K·V 투영은 `gemm`, 점수 계산과 가중합은 `batch_gemm`으로 변환되고 Softmax가 복합 패턴으로 식별 |
 
 예시 코드를 고치거나 직접 작성한 모델을 넣어봐도 됩니다. `nn.Module`을 상속한 클래스를 정의하고 마지막에 `model`과 `x` 변수를 선언하면 됩니다.
+
+### ③ 변환 규칙 보기
+
+상단 **변환 규칙**에서 표준 IR 연산이 어떤 NPU 특화 IR 연산으로 바뀌는지 26개 규칙을 볼 수 있습니다. 연산 이름이나 커널 체인으로 검색하고(예: `relu`, `Erf`), 행을 누르면 무엇과 비교해 검증하는지와 통과·실패의 의미가 펼쳐집니다.
 
 <br>
 
@@ -86,7 +91,7 @@ Level 3는 연산 결과의 정합성을 확인하는 단계이며, 실제 NPU�
 웹 화면 없이 바로 결과만 볼 수도 있습니다.
 
 ```bash
-docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.5 python -m server.cli verify --scale sim_mid
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli verify --scale sim_mid
 ```
 
 직접 작성한 모델 파일을 분석하려면 파일을 컨테이너에 연결합니다.
@@ -94,13 +99,13 @@ docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.5 python -m server.cli ver
 ```bash
 # macOS, Linux
 docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.5 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli convert /tmp/model.py
 ```
 
 ```powershell
 # Windows PowerShell (줄바꿈 기호가 백틱 `)
 docker run --rm -v "${PWD}\my_model.py:/tmp/model.py:ro" `
-  ghcr.io/soadri/ai-model-ir-pipeline:0.5 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli convert /tmp/model.py
 ```
 
 <br>

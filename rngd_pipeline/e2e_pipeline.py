@@ -14,7 +14,7 @@ from typing import Optional, Literal
 import torch
 import torch_mlir
 from torch_mlir.ir import (
-    Context, Module, Operation, InsertionPoint, StringAttr, RankedTensorType, FloatAttr,
+    Context, Module, Operation, InsertionPoint, StringAttr, RankedTensorType, FloatAttr, IntegerAttr,
 )
 
 
@@ -178,6 +178,53 @@ def _match_gelu_erf(body_block) -> bool:
         return False
 
 
+# =====================================================================
+# ReLU 본문 판별
+# =====================================================================
+# torch-mlir는 ReLU를 linalg.generic 하나로 내리며, 작성 방식에 따라 본문이 두 가지다.
+#   nn.ReLU, F.relu        : c = cmpf ugt(x, 0) ; y = select(c, x, 0)
+#   torch.clamp(min=0)     : c = cmpf ult(x, 0) ; y = select(c, 0, x)
+# 비교 상수가 0이고, 고르는 값이 같은 x와 0일 때만 ReLU로 본다 (max(x, 1), Leaky ReLU 등은 제외).
+_RELU_GREATER = {"ugt", "ogt", "uge", "oge"}
+_RELU_LESS = {"ult", "olt", "ule", "ole"}
+# arith.cmpf의 predicate 속성 값 (MLIR arith::CmpFPredicate). 출력 표기가 바뀌어도 속성 값은 같으므로 속성으로 읽는다.
+_CMPF_PREDICATES = {0: "false", 1: "oeq", 2: "ogt", 3: "oge", 4: "olt", 5: "ole", 6: "one", 7: "ord",
+                    8: "ueq", 9: "ugt", 10: "uge", 11: "ult", 12: "ule", 13: "une", 14: "uno", 15: "true"}
+
+
+def _cmpf_predicate(cmp_op):
+    try:
+        return _CMPF_PREDICATES.get(IntegerAttr(cmp_op.attributes["predicate"]).value)
+    except Exception:  # noqa: BLE001
+        m = re.search(r"arith\.cmpf\s+(\w+)", str(cmp_op))
+        return m.group(1) if m else None
+
+
+def _match_relu(body_block) -> bool:
+    ops = [o for o in body_block.operations if str(o.name) not in ("linalg.yield", "arith.constant")]
+    if [str(o.name) for o in ops] != ["arith.cmpf", "arith.select"]:
+        return False
+    try:
+        x = body_block.arguments[0]
+        cmp, sel = ops
+        pred = _cmpf_predicate(cmp)
+        if pred is None:
+            return False
+        a, b = cmp.operands
+        if not (a == x and _const_float(b) == 0.0):
+            return False
+        c, t, f = sel.operands
+        if c != cmp.results[0]:
+            return False
+        if pred in _RELU_GREATER:
+            return t == x and _const_float(f) == 0.0
+        if pred in _RELU_LESS:
+            return _const_float(t) == 0.0 and f == x
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
 @dataclass
 class RngdSpec:
     family: Literal["elementwise", "contraction", "reduce", "layout"]
@@ -282,6 +329,35 @@ def rewrite_to_rngd(module: Module):
 
             _cur["ann_after"] = [
                 ("rngd.elementwise", "gelu: x 보관 → ×1/√2 → Erf → FMA(×0.5+0.5) → ×x, 벡터 엔진 1패스"),
+            ]
+            _cur["spec"] = RngdSpec(family="elementwise", rngd_op=rngd_op_name, shape=shape)
+            return True
+
+        # --- 단항(unary) elementwise: ReLU (cmpf+select 복합 패턴) ---
+        if num_ins == 1 and _match_relu(body_block):
+            lhs = op.operands[0]
+            result_type = op.results[0].type
+            shape = list(RankedTensorType(result_type).shape)
+            rngd_op_name = "relu"
+
+            _cur["ann_before"] = [
+                ("arith.cmpf", "ReLU 블록 감지 — x와 0을 비교해 큰 쪽을 고름 → rngd.elementwise(relu)"),
+                ("linalg.generic", "이 블록 전체가 rngd.elementwise(relu)로 대체됨"),
+            ]
+
+            with InsertionPoint(op):
+                new_op = Operation.create(
+                    "rngd.elementwise",
+                    results=[result_type],
+                    operands=[lhs],
+                    attributes={"op": StringAttr.get(rngd_op_name)},
+                    loc=op.location,
+                )
+            op.results[0].replace_all_uses_with(new_op.results[0])
+            op.erase()
+
+            _cur["ann_after"] = [
+                ("rngd.elementwise", "relu: Clip ALU의 max(x, 0) 하나 (8-way 모드, 실수 ALU 쓰지 않음)"),
             ]
             _cur["spec"] = RngdSpec(family="elementwise", rngd_op=rngd_op_name, shape=shape)
             return True
@@ -2220,30 +2296,34 @@ def detect_fusion_patterns(nodes: list) -> list:
             description=f"FFN (SwiGLU): gate→SiLU→up→gate·up→down — {len(ffn_indices)} ops",
         ))
 
-    # ── GELU 감지 ──
-    # 패턴: rngd.elementwise(gelu) 하나 (erf 방식 GELU 본문 전체가 변환 단계에서 연산 하나로 바뀜)
-    gemm_types = ("rngd.batch_gemm", "rngd.gemm")
-    for n in nodes:
-        if _attr(n.idx) == "gelu":
-            groups.append(FusionGroup(
-                name="GELU",
-                node_indices=[n.idx],
-                description="GELU (erf): x·0.5·(1+erf(x/√2)) — 1 op, 벡터 엔진 1패스",
-            ))
-
-    # ── GELU 계열 FFN 감지 ──
-    # GeGLU (Gemma): gemm(gate) → gelu, gemm(up), mul(gelu·up) → gemm(down)
-    # GELU FFN (GPT-2, BERT): gemm(up) → gelu → gemm(down)
+    # ── GELU·ReLU 계열 활성화와 FFN 감지 ──
+    # 활성화: rngd.elementwise(gelu|relu) 하나 (본문 전체가 변환 단계에서 연산 하나로 바뀜)
+    # 게이트형 FFN (GeGLU: Gemma, ReGLU: PaLM): gemm(gate) → act, gemm(up), mul(act·up) → gemm(down)
+    # 단순 FFN (GPT-2·BERT 등): gemm(up) → act → gemm(down)
     # gemm 결과는 텐서 모양 변환을 거쳐 다음 연산에 들어가므로, SwiGLU와 같이 연산 순서로 앞뒤 gemm을 찾는다.
-    for gg in [g for g in groups if g.name == "GELU"]:
-        gelu = idx_to_node[gg.node_indices[0]]
-        before = [n for n in nodes if n.idx < gelu.idx]
-        after = [n for n in nodes if n.idx > gelu.idx]
+    gemm_types = ("rngd.batch_gemm", "rngd.gemm")
+    ACTIVATIONS = {
+        # op_attr: (패턴 이름, 표시 이름, 설명, 게이트형 이름, 게이트형 커널, 단순형 커널)
+        "gelu": ("GELU", "GELU", "GELU (erf): x·0.5·(1+erf(x/√2)) — 1 op, 벡터 엔진 1패스", "GeGLU", "fused_geglu_ffn", "fused_gelu_ffn"),
+        "relu": ("RELU", "ReLU", "ReLU: max(x, 0) — 1 op, Clip ALU", "ReGLU", "fused_reglu_ffn", "fused_relu_ffn"),
+    }
+    act_groups = []
+    for n in nodes:
+        if _attr(n.idx) in ACTIVATIONS:
+            name, _, desc, *_ = ACTIVATIONS[_attr(n.idx)]
+            g = FusionGroup(name=name, node_indices=[n.idx], description=desc)
+            groups.append(g)
+            act_groups.append((g, ACTIVATIONS[_attr(n.idx)]))
+
+    for g, (_, label, _, gated_label, gated_hint, plain_hint) in act_groups:
+        act = idx_to_node[g.node_indices[0]]
+        before = [n for n in nodes if n.idx < act.idx]
+        after = [n for n in nodes if n.idx > act.idx]
         first_gemm = next((n for n in reversed(before) if n.op_type in gemm_types), None)
         if first_gemm is None:
             continue
-        # gelu 출력을 바로 받는 곱셈이 있으면 GeGLU
-        gate_mul = next((n for n in after if n.op_attr == "mul" and gelu.ssa_name in n.inputs), None)
+        # 활성화 출력을 바로 받는 곱셈이 있으면 게이트형
+        gate_mul = next((n for n in after if n.op_attr == "mul" and act.ssa_name in n.inputs), None)
         if gate_mul is not None:
             up_gemm = next((n for n in nodes if first_gemm.idx < n.idx < gate_mul.idx and n.op_type in gemm_types), None)
             down_gemm = next((n for n in nodes if n.idx > gate_mul.idx and n.op_type in gemm_types), None)
@@ -2253,21 +2333,20 @@ def detect_fusion_patterns(nodes: list) -> list:
             groups.append(FusionGroup(
                 name="FFN",
                 node_indices=idxs,
-                description=f"FFN (GeGLU): gate→GELU→up→gate·up→down — {len(idxs)} ops",
-                kernel_hint="fused_geglu_ffn",
+                description=f"FFN ({gated_label}): gate→{label}→up→gate·up→down — {len(idxs)} ops",
+                kernel_hint=gated_hint,
             ))
             continue
-        # 그렇지 않으면 gelu 바로 뒤의 gemm (사이에 계산 연산이 없어야 함)
+        # 그렇지 않으면 활성화 바로 뒤의 gemm (사이에 계산 연산이 없어야 함)
         down_gemm = after[0] if after and after[0].op_type in gemm_types else None
-        between_up = [n for n in nodes if first_gemm.idx < n.idx < gelu.idx]
+        between_up = [n for n in nodes if first_gemm.idx < n.idx < act.idx]
         if down_gemm is None or between_up:
             continue
-        idxs = [first_gemm.idx, gelu.idx, down_gemm.idx]
         groups.append(FusionGroup(
             name="FFN",
-            node_indices=idxs,
-            description="FFN (GELU): up→GELU→down — 3 ops",
-            kernel_hint="fused_gelu_ffn",
+            node_indices=[first_gemm.idx, act.idx, down_gemm.idx],
+            description=f"FFN ({label}): up→{label}→down — 3 ops",
+            kernel_hint=plain_hint,
         ))
 
     return groups
@@ -2284,8 +2363,9 @@ FUSION_KERNEL_HINTS = {
     "SILU": "fused_silu",
     "RESIDUAL": "fused_residual_add",
     "ATTENTION": "fused_attention",   # QKV 프로젝션, RoPE, Softmax, 출력 프로젝션까지 포함한 블록 단위
-    "FFN": "fused_swiglu_ffn",          # GELU 계열 FFN은 그룹에 fused_gelu_ffn / fused_geglu_ffn을 따로 지정
+    "FFN": "fused_swiglu_ffn",          # GELU·ReLU 계열 FFN은 그룹에 fused_{gelu,geglu,relu,reglu}_ffn을 따로 지정
     "GELU": "fused_gelu",
+    "RELU": "fused_relu",
 }
 
 # 연동 중인 시뮬레이터 버전(furiosa-opt 0.10)에서 커널로 실행하지 않고 CPU에서 대체 처리하는 연산

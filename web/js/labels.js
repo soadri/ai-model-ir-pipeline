@@ -11,7 +11,7 @@ export const MARKERS = [
 
 export const PATTERNS = {
   RMSNORM: "RMSNorm", SOFTMAX: "Softmax", SILU: "SiLU", RESIDUAL: "Residual",
-  ATTENTION: "Attention", FFN: "FFN", LAYERNORM: "LayerNorm", GELU: "GELU",
+  ATTENTION: "Attention", FFN: "FFN", LAYERNORM: "LayerNorm", GELU: "GELU", RELU: "ReLU",
 };
 
 export const SCALES = {
