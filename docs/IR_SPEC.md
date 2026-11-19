@@ -3,8 +3,8 @@
 | 항목 | 내용 |
 |:--|:--|
 | 명세 버전 | 0.4 |
-| 기준 구현 | 파이프라인 v0.2.0 (`rngd_pipeline/e2e_pipeline.py`의 `rewrite_to_rngd`, `insert_optimization_markers`) |
-| 변환 규칙 | `registry/rngd_registry.sql` (25개 항목) |
+| 기준 구현 | 파이프라인 v0.6.0 (`rngd_pipeline/e2e_pipeline.py`의 `rewrite_to_rngd`, `insert_optimization_markers`) |
+| 변환 규칙 | `registry/rngd_registry.sql` (26개 항목) |
 | 작성 | 한국전자기술연구원(KETI) |
 
 이 문서는 파이프라인이 표준 IR(MLIR linalg)에서 만들어 내는 NPU 특화 IR의 연산, 속성, 의미를 정의합니다. 문서의 모든 예시는 Llama-3.1 8B Decoder Layer 중간 규모 구성(dim 64, head 8개, KV head 2개)을 실제로 변환한 결과에서 가져왔습니다.
@@ -16,7 +16,7 @@
 NPU 특화 IR은 표준 IR과 NPU 커널 사이에 두는 중간 표현입니다. 표준 IR의 연산 중 실제 계산을 하는 연산을 NPU가 처리하는 단위의 연산(`rngd.*`)으로 바꾸고, 그 밖의 연산(텐서 모양 변경, 상수, 모듈 구조)은 표준 IR 연산 그대로 둡니다. 따라서 NPU 특화 IR은 `rngd.*` 연산과 일부 표준 연산이 함께 있는 MLIR 모듈입니다(6절).
 
 ```
-PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor) ──재작성──▶ NPU 특화 IR (rngd.* + 남은 표준 연산) ──▶ vISA 커널
+PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor) ──NPU 특화 IR 변환──▶ NPU 특화 IR (rngd.* + 남은 표준 연산) ──▶ vISA 커널
 ```
 
 명세를 공개하는 목적은 두 가지입니다. 파이프라인 사용자가 변환 결과를 정확히 해석할 수 있게 하고, 다른 NPU를 대상으로 같은 구조의 Dialect와 백엔드를 만들려는 개발자에게 참조가 되게 하는 것입니다(7절).
@@ -46,7 +46,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | `rngd.transpose` | 축 순서 변경 | 1개 | `in_shape`, `out_shape`, `perm` | 입력을 그대로 내보내는 `linalg.generic` (축 순서가 바뀐 indexing map) |
 | `rngd.broadcast` | 크기 1인 축 늘리기 | 1개 | `in_shape`, `out_shape`, `broadcast_dims` | 입력을 그대로 내보내는 `linalg.generic` (상수 축이 있는 indexing map) |
 
-설계 단계에서 함께 정의했지만 현재 재작성에서 만들지 않는 연산(`rngd.fill`, `rngd.conv2d`)은 4.9절에 적었습니다.
+설계 단계에서 함께 정의했지만 현재 변환 단계에서 만들지 않는 연산(`rngd.fill`, `rngd.conv2d`)은 4.9절에 적었습니다.
 
 <br>
 
@@ -161,13 +161,13 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | 연산 | 설계상 의미 | 현재 처리 |
 |:--|:--|:--|
 | `rngd.fill` | 상수 채우기·초기화 | 행렬 곱의 출력 초기화는 행렬 곱 연산에 흡수되고, 나머지 `linalg.fill`은 표준 연산으로 남습니다(6절). |
-| `rngd.conv2d` | 2차원 합성곱 | 재작성 규칙이 없습니다. 합성곱 계열 모델 지원 시 추가합니다. |
+| `rngd.conv2d` | 2차원 합성곱 | 변환 규칙이 없습니다. 합성곱 계열 모델 지원 시 추가합니다. |
 
 <br>
 
 ## 5. 최적화 마커
 
-재작성과 복합 패턴 식별이 끝난 뒤, 식별 결과와 실행 위치를 `rngd.*` 연산의 **보조 속성**으로 남깁니다. 이름이 `rngd.`으로 시작하는 속성은 연산의 의미에 영향을 주지 않으며, 지워도 계산 결과는 같습니다. 특화 커널로 바꿀 수 있는 범위와 NPU에서 직접 실행하지 않는 연산을 IR만 보고 알 수 있게 하는 것이 목적입니다.
+NPU 특화 IR 변환과 복합 패턴 식별이 끝난 뒤, 식별 결과와 실행 위치를 `rngd.*` 연산의 **보조 속성**으로 남깁니다. 이름이 `rngd.`으로 시작하는 속성은 연산의 의미에 영향을 주지 않으며, 지워도 계산 결과는 같습니다. 특화 커널로 바꿀 수 있는 범위와 NPU에서 직접 실행하지 않는 연산을 IR만 보고 알 수 있게 하는 것이 목적입니다.
 
 | 속성 | 의미 | 값 |
 |:--|:--|:--|
@@ -207,7 +207,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 
 ## 6. NPU 특화 IR에 남는 표준 연산
 
-재작성 후에도 다음 표준 연산은 그대로 남습니다. Llama-3.1 8B Decoder Layer 중간 규모 구성의 개수를 함께 적었습니다.
+변환 후에도 다음 표준 연산은 그대로 남습니다. Llama-3.1 8B Decoder Layer 중간 규모 구성의 개수를 함께 적었습니다.
 
 | 구분 | 연산 | 개수 | 의미 |
 |:--|:--|:--:|:--|
@@ -219,7 +219,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 
 ## 7. 백엔드 인터페이스
 
-재작성은 NPU 특화 IR과 함께, 바꾼 연산마다 커널 구성에 필요한 정보를 **커널 명세**(`RngdSpec`)로 남깁니다. NPU 백엔드는 IR을 다시 해석하지 않고 이 명세로 커널을 고르거나 만들 수 있습니다.
+변환 단계는 NPU 특화 IR과 함께, 바꾼 연산마다 커널 구성에 필요한 정보를 **커널 명세**(`RngdSpec`)로 남깁니다. NPU 백엔드는 IR을 다시 해석하지 않고 이 명세로 커널을 고르거나 만들 수 있습니다.
 
 | 필드 | 의미 | 사용하는 연산 계열 |
 |:--|:--|:--|
@@ -231,7 +231,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 
 **다른 NPU로 확장할 때**에는 표준 IR 변환, 연산 분류, 복합 패턴 식별, 검증 체계는 그대로 두고 다음 세 가지만 바꾸면 됩니다.
 
-1. 대상 Dialect의 연산과 재작성 규칙 (`rewrite_to_rngd`에 해당하는 부분)
+1. 대상 Dialect의 연산과 변환 규칙 (`rewrite_to_rngd`에 해당하는 부분)
 2. 변환 규칙 레지스트리의 대응 연산, 데이터 타입, 허용 오차
 3. 커널 백엔드 (`rngd_pipeline/kernel_backend.py`): 커널 명세를 받아 해당 NPU의 커널을 실행하는 부분
 
@@ -239,7 +239,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 
 ## 8. 변환 규칙 레지스트리와 판정 기준
 
-변환 규칙 레지스트리(`registry/rngd_registry.sql`)는 25개 항목으로, 각 항목에 원본 연산, 대응 NPU 특화 IR 연산, 실행 데이터 타입, 허용 오차와 그 근거를 담습니다. 연산 계열별 판정 기준은 다음과 같습니다.
+변환 규칙 레지스트리(`registry/rngd_registry.sql`)는 26개 항목으로, 각 항목에 원본 연산, 대응 NPU 특화 IR 연산, 실행 데이터 타입, 허용 오차와 그 근거를 담습니다. 연산 계열별 판정 기준은 다음과 같습니다.
 
 | 연산 계열 | 항목 | 실행 데이터 타입 | 허용 오차 |
 |:--|:--|:--|:--|
@@ -248,7 +248,7 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | reduce | reduce_sum, reduce_max | f32 | 절대 오차 0.001, 상대 오차 1% 이하 |
 | layout | transpose, broadcast | f32 | 값이 정확히 같아야 함 |
 
-레지스트리의 `status`는 커널 쪽 지원 상태입니다. `gelu`는 `planned`(예정)이며, `silu`는 아래 9절처럼 재작성에서 하나의 연산으로 합치지 않습니다.
+레지스트리의 `status`는 커널 쪽 지원 상태입니다. 현재 26개 항목 모두 `done`(검증 완료)이며, `silu`는 아래 9절처럼 변환 단계에서 하나의 연산으로 합치지 않습니다.
 
 <br>
 
@@ -270,4 +270,4 @@ PyTorch 모델 ──torch-mlir──▶ 표준 IR (linalg, arith, math, tensor)
 | 0.1 | v0.1.2 | 첫 공개. `rngd.transpose`의 `perm`, `rngd.broadcast`의 `broadcast_dims` 포함 (v0.1.1까지는 두 속성이 없었고, 전치·확장을 shape으로 판별) |
 | 0.2 | v0.2.0 | 최적화 마커 추가 (`rngd.fusion`, `rngd.kernel_hint`, `rngd.exec`), `rngd.elementwise`에 `negf`(부호 반전) 추가 |
 | 0.3 | v0.5.0 | `rngd.elementwise`에 `gelu`(erf 방식) 추가, 복합 패턴에 GELU와 GELU 계열 FFN(GELU, GeGLU) 및 커널 후보(`fused_gelu`, `fused_gelu_ffn`, `fused_geglu_ffn`) 추가 |
-| 0.4 | v0.6.0 | `rngd.elementwise`에 `relu` 추가, 복합 패턴에 ReLU와 FFN(ReGLU, ReLU) 및 커널 후보(`fused_relu`, `fused_reglu_ffn`, `fused_relu_ffn`) 추가 |
+| 0.4 | v0.6.0 | 문서의 「재작성」을 「변환」으로 표현 정리, `rngd.elementwise`에 `relu` 추가, 복합 패턴에 ReLU와 FFN(ReGLU, ReLU) 및 커널 후보(`fused_relu`, `fused_reglu_ffn`, `fused_relu_ffn`) 추가 |

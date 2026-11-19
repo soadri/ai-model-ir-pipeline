@@ -216,7 +216,9 @@ async function initLens() {
 const SCALE_ROWS = [
   ["sim_small", "기본 모델", "Llama-3.1 8B Decoder Layer, dim 16"],
   ["sim_mid", "기본 모델, 중간 규모", "dim 64, attention head 8, KV head 2 (GQA)"],
-  ["custom", "사용자 모델 경로", "SwiGLU FFN 예시 코드"],
+  ["custom", "사용자 모델 경로", "SwiGLU FFN (Llama)"],
+  ["custom_gelu", "사용자 모델 경로", "GELU FFN (GPT-2·BERT), nn.GELU"],
+  ["custom_reglu", "사용자 모델 경로", "ReGLU FFN (PaLM), F.relu"],
 ];
 const LIMIT = (name) => (/RMSNorm/.test(name) ? { pct: 1, kind: "elementwise" } : { pct: 5, kind: "contraction" });
 const badge = (ok) => h("span", { class: ok ? "ok" : "ng" }, ok ? "통과" : "실패");

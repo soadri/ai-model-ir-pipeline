@@ -34,23 +34,26 @@ AI 모델 변환(표준 IR) 파이프라인은 PyTorch로 작성된 AI 모델이
 
 <img src="docs/assets/architecture.svg" alt="파이프라인 구조: 표준 IR 변환과 분석(1~3), NPU 특화 IR 변환과 시뮬레이터 실행(4~6), 계층적 검증과 결과 확인(7~9), 정기 재검증" width="100%">
 
-PyTorch 모델은 torch-mlir을 통해 표준 MLIR의 linalg 연산으로 변환되고(1\~3), 파이프라인이 이 연산들을 분석해 NPU dialect 연산으로 다시 작성합니다(4). 이후 연산별 커널을 구성해 NPU 시뮬레이터에서 실행하고(5\~6), 변환 정합성과 연산 결과를 검증합니다(7\~9).
+PyTorch 모델은 torch-mlir을 통해 표준 MLIR의 linalg 연산으로 변환되고(1\~3), 파이프라인이 이 연산들을 분석해 NPU 특화 IR 연산으로 바꿉니다(4). 이후 연산별 커널을 구성해 NPU 시뮬레이터에서 실행하고(5\~6), 변환 정합성과 연산 결과를 검증합니다(7\~9).
 
 <br>
 
 ## 주요 기능
 
 **표준 IR 변환과 분석**<br>
-PyTorch 모델을 linalg IR로 변환하고, 각 연산을 변환 대상·흡수·형태 변환으로 분류합니다. RMSNorm, Softmax, SiLU, Attention, FFN 같은 복합 패턴도 식별합니다.
+PyTorch 모델을 linalg IR로 변환하고, 각 연산을 변환 대상·흡수·형태 변환으로 분류합니다. RMSNorm, Softmax, SiLU, GELU, ReLU, Attention, FFN(SwiGLU, GeGLU, ReGLU 등) 같은 복합 패턴도 식별합니다.
 
 **NPU 특화 IR 변환**<br>
-linalg 연산을 NPU dialect 연산으로 다시 작성합니다. 예를 들어 `nn.Linear`가 만드는 가중치 transpose와 `linalg.matmul`의 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `gemm`으로 결합됩니다.
+linalg 연산을 NPU 특화 IR(RNGD Dialect) 연산으로 바꿉니다. 예를 들어 `nn.Linear`가 만드는 가중치 transpose와 `linalg.matmul`의 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `gemm`으로 결합되고, GELU·ReLU·sigmoid처럼 여러 기본 연산으로 풀린 활성화 함수는 연산 하나로 합쳐집니다.
 
 **계층적 검증**<br>
 Level 1-2에서 IR 변환 정합성 12개 항목을, Level 3에서 NPU 시뮬레이터 실행 결과와 PyTorch 기준값의 수치 정합성을 확인합니다.
 
+**변환 규칙 레지스트리**<br>
+표준 IR 연산마다 어떤 NPU 특화 IR 연산으로 바뀌는지, 정밀도와 허용 오차, 무엇과 비교해 검증하는지를 26개 규칙으로 정리해 대시보드의 「변환 규칙」 화면과 API로 공개합니다.
+
 **사용자 모델 분석**<br>
-직접 정의한 `nn.Module`을 입력하면 변환 커버리지, 미지원 연산, 복합 패턴, 변환된 IR을 바로 확인할 수 있습니다.
+직접 정의한 `nn.Module`을 입력하면 변환 커버리지, 미지원 연산, 복합 패턴, 변환된 IR을 바로 확인할 수 있습니다. 대시보드 예시 13종(Llama, GPT-J, Gemma, GPT-2, BERT, PaLM, Mixtral 계열 구조) 중 12종은 모든 연산이 변환되고, Mixtral식 MoE 예시는 반복문의 인덱스 계산(정수→실수 변환) 때문에 92%입니다.
 
 **결과 확인**<br>
 웹 대시보드와 CLI를 제공하며, 변환된 IR·커널 소스·검증 리포트를 내려받을 수 있습니다.
@@ -116,7 +119,7 @@ Windows 환경, 해볼 것, 결과 읽는 법, 문제 해결은 [체험 가이�
 > 이미지는 `linux/amd64`용입니다. Apple Silicon Mac에서는 Docker Desktop이 에뮬레이션으로 실행하므로 검증 시간이 길어질 수 있습니다.
 
 > [!WARNING]
-> 사용자 모델 분석은 입력한 PyTorch 코드를 체험 서버 안에서 그대로 실행합니다. 본인 PC에서만 실행하고, 외부에서 접속할 수 있는 서버로 운영하지 마세요.
+> 사용자 모델 분석은 입력한 PyTorch 코드를 체험 서버 안에서 그대로 실행합니다. 본인 PC에서만 실행하세요. 여러 사람이 접속하는 서버로 운영해야 한다면 [빌드 가이드](docs/BUILD.md#c-여러-사람이-접속하는-서버에서-운영할-때)의 접근 토큰 설정을 사용하세요.
 
 배포된 이미지가 이 저장소의 공개 소스에서 GitHub Actions로 빌드됐는지 직접 확인할 수 있습니다.
 
@@ -141,7 +144,7 @@ gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.6 -R soadri/ai
 
 ## 현재 한계
 
-- 검증은 Llama 계열 Decoder Layer 구조를 중심으로 진행했습니다. 다른 구조의 모델은 변환 커버리지가 낮을 수 있으며, 미지원 연산은 분석 결과에 그대로 표시됩니다.
+- 기본 모델 검증은 Llama 계열 Decoder Layer 구조로 진행합니다. 사용자 모델의 Level 3는 Linear, RMSNorm, SiLU, GELU, ReLU 레이어를 커널로 검증하며, 그 밖의 연산은 Level 1-2까지 확인합니다. 변환하지 못한 연산은 분석 결과에 그대로 표시됩니다.
 - reduce 계열 연산은 현재 CPU에서 처리합니다.
 - 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#9-현재-한계)에 정리했습니다.
 - 표준 IR 변환은 특정 버전의 torch-mlir에 고정되어 있습니다. 최신 torch-mlir의 FX importer 경로로의 이전을 준비하고 있습니다([지원 버전 정책](docs/VERSIONING.md)).

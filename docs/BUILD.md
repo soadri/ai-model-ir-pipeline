@@ -22,7 +22,7 @@ docker run --rm -p 127.0.0.1:8100:8100 ai-model-ir-pipeline:dev
 
 | 단계 | 하는 일 |
 |:--|:--|
-| 커널 빌드 | Rust 툴체인(nightly-2026-05-01)과 furiosa-opt로 체험용 커널 11개를 컴파일하고, 체험 데이터로 커널 하나를 실제로 실행해 확인 |
+| 커널 빌드 | Rust 툴체인(nightly-2026-05-01)과 furiosa-opt로 체험용 커널 13개를 컴파일하고, 체험 데이터로 커널 하나를 실제로 실행해 확인 |
 | wheel 받기 | 저장소의 [build-deps-1 릴리즈](https://github.com/soadri/ai-model-ir-pipeline/releases/tag/build-deps-1)에서 torch·torch-mlir wheel을 받음. SHA-256이 다르면 빌드가 멈춤 |
 | 실행 이미지 | Python 의존성, 컴파일된 커널, 체험 데이터, 파이프라인 코드를 담음. Rust 툴체인은 포함하지 않음 |
 
@@ -31,6 +31,10 @@ docker run --rm -p 127.0.0.1:8100:8100 ai-model-ir-pipeline:dev
 ```bash
 docker run --rm ai-model-ir-pipeline:dev python -m server.cli verify --scale sim_small
 docker run --rm ai-model-ir-pipeline:dev python -m rngd_pipeline.layout_check
+
+# 사용자 모델 경로: Level 1-2와 Level 3를 모두 통과하지 못하면 종료 코드 1
+docker run --rm -v "$PWD/examples:/work:ro" ai-model-ir-pipeline:dev \
+  python -m server.cli convert /work/swiglu_ffn.py --require-pass
 ```
 
 <br>
@@ -62,7 +66,7 @@ pip install wheels/*.whl -r requirements.txt -c constraints.txt
 
 ### 2. 변환과 Level 1-2 검증
 
-여기까지만 준비해도 표준 IR 변환, NPU 특화 IR 재작성, Level 1-2 검증, 데이터 배치 연산 점검을 모두 실행할 수 있습니다.
+여기까지만 준비해도 표준 IR 변환, NPU 특화 IR 변환, Level 1-2 검증, 데이터 배치 연산 점검을 모두 실행할 수 있습니다.
 
 ```bash
 python -m server.cli info                         # 버전과 실행 환경
@@ -89,7 +93,7 @@ source "$HOME/.cargo/env"
 python -m server.cli verify --scale sim_small
 ```
 
-furiosa-opt(`furiosa-opt-std` 0.6)는 cargo가 crates.io에서 받으며, `kernels/Cargo.lock`으로 하위 의존성까지 고정되어 있습니다. 처음 실행할 때는 커널마다 컴파일이 일어나 시간이 걸리고, 이후에는 컴파일 결과를 재사용합니다.
+furiosa-opt(`furiosa-opt-std` 0.10)는 cargo가 crates.io에서 받으며, `kernels/Cargo.lock`으로 하위 의존성까지 고정되어 있습니다. 처음 실행할 때는 커널마다 컴파일이 일어나 시간이 걸리고, 이후에는 컴파일 결과를 재사용합니다.
 
 ### 4. 환경 변수
 
