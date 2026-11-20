@@ -22,6 +22,22 @@ def _mark(ok) -> str:
     return "통과" if ok else "실패"
 
 
+def _templates_lines(t) -> list[str]:
+    """예시 기반 패턴 식별 결과 (규칙 기반과의 비교)"""
+    if not t:
+        return []
+    if t.get("error"):
+        return [f"예시 기반 식별      실행하지 못함 ({t['error']})"]
+    c = t.get("comparison", {})
+    line = f"예시 기반 식별      규칙 기반과 {c.get('agree', 0)}/{c.get('total', 0)} 일치"
+    if c.get("rule_only"):
+        line += f" (템플릿 없음: {', '.join(c['rule_only'])})"
+    out = [line]
+    out += [f"   규칙 기반만 찾음: {m['pattern']} 노드 {m['nodes']}" for m in c.get("missed", [])]
+    out += [f"   예시 기반만 찾음: {x['pattern']} 노드 {x['nodes']}" for x in c.get("extra", [])]
+    return out
+
+
 def _save(result: dict, path: str | None) -> None:
     if path:
         Path(path).write_text(json.dumps(result, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
@@ -48,6 +64,9 @@ def cmd_verify(args) -> int:
     l12, l3, ir = result.get("level12") or {}, result.get("level3") or {}, result.get("ir_detail") or {}
     print("\n" + "=" * 60)
     print(f"NPU dialect 연산    {ir.get('rngd_count', '-')}개, 변환 커버리지 {ir.get('coverage_pct', '-')}%")
+    print(f"복합 패턴           {l12.get('fusion') or '없음'}")
+    for line in _templates_lines(l12.get("pattern_templates")):
+        print(line)
     print(f"Level 1-2 IR 정합성  {l12.get('pass_count')}/{len(l12.get('checks', []))} {_mark(l12.get('all_passed'))}")
     for c in l12.get("checks", []):
         if not c.get("passed"):
@@ -83,6 +102,8 @@ def cmd_convert(args) -> int:
     for u in result.get("unsupported", []):
         print(f"   미지원: {u.get('label') or u.get('name')} — {u['reason']}")
     print(f"복합 패턴           {result.get('fusion') or '없음'}")
+    for line in _templates_lines(result.get("pattern_templates")):
+        print(line)
     print(f"Level 1-2 수치 비교  {_mark(l12.get('passed'))} (상대 오차 {l12.get('rel_err_pct')}%)")
     print(f"Level 3 NPU 시뮬레이터 {summary.get('passed', 0)}/{summary.get('tested', 0)} 통과")
     print("=" * 60 + f"\n소요 시간 {result['elapsed_s']}초")

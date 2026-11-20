@@ -111,6 +111,10 @@ jobs:
           PY
           docker run --rm -v "$PWD/out:/out" ai-model-ir-pipeline:ci \
             python -m server.cli convert /out/reglu_ffn.py --json /out/convert-reglu-ffn.json --require-pass
+      - name: 예시 기반 패턴 식별 (규칙 기반과 일치율)
+        run: |
+          docker run --rm ai-model-ir-pipeline:ci python -m rngd_pipeline.pattern_templates --check
+          docker run --rm ai-model-ir-pipeline:ci python -m rngd_pipeline.pattern_eval | tee -a "$GITHUB_STEP_SUMMARY"
       - name: 결과 요약
         if: always()
         run: |

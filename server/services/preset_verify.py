@@ -91,6 +91,7 @@ def run_level12(scale: str = DEFAULT_SCALE) -> dict:
         "dataflow_nodes": result.dataflow_nodes,
         "dataflow_edges": result.dataflow_edges,
         "fusion": dict(result.fusion_groups),
+        "pattern_templates": result.pattern_templates,
         "markers": result.marker_summary,
         "marker_samples": {k: [(name, reason) for name, reason in v[:3]]
                            for k, v in _marker_details(model, x).items()},

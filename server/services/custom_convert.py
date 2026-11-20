@@ -147,13 +147,24 @@ def analyze(model, x, code: str, started: float) -> dict:
     report = mark_remaining(module)
 
     fusion_dict: dict[str, int] = {}
+    dataflow, fusion_groups = [], []
     try:
-        fusion_groups = detect_fusion_patterns(extract_dataflow(module))
+        dataflow = extract_dataflow(module)
+        fusion_groups = detect_fusion_patterns(dataflow)
         for fg in fusion_groups:
             fusion_dict[fg.name] = fusion_dict.get(fg.name, 0) + 1
         insert_optimization_markers(module, fusion_groups)
     except Exception:  # noqa: BLE001
         fusion_dict = {}
+
+    # 예시 기반 패턴 식별: 규칙 기반 결과는 그대로 두고 나란히 실행해 비교만 기록 (실패해도 기존 결과에 영향 없음)
+    pattern_templates: dict = {}
+    if dataflow:
+        try:
+            from rngd_pipeline.pattern_templates import report as template_report
+            pattern_templates = template_report(dataflow, fusion_groups)
+        except Exception as e:  # noqa: BLE001
+            pattern_templates = {"error": f"{type(e).__name__}: {e}"}
 
     groups = _group_unsupported(report)
     converted = len(report.get("CONVERTED", []))
@@ -177,6 +188,7 @@ def analyze(model, x, code: str, started: float) -> dict:
         "unsupported_count": len(groups),
         "markers": marker_summary,
         "fusion": fusion_dict,
+        "pattern_templates": pattern_templates,
         "level12": level12,
         "npu_ref": {"refs": refs, "all_verified": all_verified,
                     "basis": "Llama-3.1 8B Decoder Layer (furiosa-opt 0.10, gemm M=512 현실적 규모)"},

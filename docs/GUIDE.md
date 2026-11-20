@@ -32,7 +32,7 @@ docker --version
 아래 한 줄로 이미지를 받고 체험 서버를 실행합니다. 처음에는 이미지(약 380MB)를 내려받느라 1~3분 정도 걸립니다.
 
 ```bash
-docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.6
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.7
 ```
 
 `Uvicorn running on http://0.0.0.0:8100` 메시지가 나오면 브라우저에서 **http://localhost:8100** 에 접속합니다. 종료하려면 터미널에서 `Ctrl+C`를 누르세요.
@@ -79,6 +79,8 @@ docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.6
 | 항목 | 의미 |
 |:--|:--|
 | 변환 커버리지 | 연산 중 NPU 특화 IR로 변환된 비율. 100% 미만이면 변환 규칙이 없어 CPU에서 처리되는 연산이 있다는 뜻입니다. |
+| 복합 패턴 | 여러 기본 연산으로 풀린 RMSNorm, Softmax, SiLU, FFN 같은 덩어리를 식별한 결과입니다(규칙 기반). |
+| 예시 기반 식별 | 예시로 만든 패턴 템플릿으로 같은 덩어리를 따로 찾아, 규칙 기반 결과와 몇 개가 일치하는지 보여 줍니다. 템플릿이 없는 패턴(Attention)은 「템플릿 없음」으로 표시됩니다. |
 | Level 1-2 | 변환된 IR의 구조(shape, dtype, 연결 관계 등)와 표준 IR 실행 결과가 PyTorch와 일치하는지 확인합니다. |
 | Level 3 | 생성된 커널을 NPU 시뮬레이터(Functional)에서 실행한 결과를 PyTorch 기준값과 비교합니다. 상대 오차가 연산 계열별 허용 기준(elementwise 1%, contraction 5%) 이내면 통과입니다. |
 
@@ -91,7 +93,7 @@ Level 3는 연산 결과의 정합성을 확인하는 단계이며, 실제 NPU�
 웹 화면 없이 바로 결과만 볼 수도 있습니다.
 
 ```bash
-docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli verify --scale sim_mid
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.7 python -m server.cli verify --scale sim_mid
 ```
 
 직접 작성한 모델 파일을 분석하려면 파일을 컨테이너에 연결합니다.
@@ -99,13 +101,13 @@ docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli ver
 ```bash
 # macOS, Linux
 docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.7 python -m server.cli convert /tmp/model.py
 ```
 
 ```powershell
 # Windows PowerShell (줄바꿈 기호가 백틱 `)
 docker run --rm -v "${PWD}\my_model.py:/tmp/model.py:ro" `
-  ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.7 python -m server.cli convert /tmp/model.py
 ```
 
 <br>

@@ -60,6 +60,9 @@ class VerifyResult:
     # 검증 항목들
     checks: list = field(default_factory=list)
 
+    # 예시 기반 패턴 식별 (규칙 기반과 나란히 실행한 결과와 비교, pattern_templates.report)
+    pattern_templates: dict = field(default_factory=dict)
+
     @property
     def all_passed(self):
         return all(c.passed for c in self.checks)
@@ -209,6 +212,13 @@ def verify_transform(model, example_input, model_name="model"):
     groups = detect_fusion_patterns(nodes)
     fusion_counter = Counter(g.name for g in groups)
 
+    # 예시 기반 패턴 식별: 규칙 기반 결과는 그대로 두고 나란히 실행해 비교만 기록 (실패해도 검증에 영향 없음)
+    try:
+        from .pattern_templates import report as template_report
+        pattern_templates = template_report(nodes, groups)
+    except Exception as e:  # noqa: BLE001
+        pattern_templates = {"error": f"{type(e).__name__}: {e}"}
+
     # 최적화 마커: 식별 결과와 실행 위치를 IR 연산 속성으로 기록 (연산·데이터 흐름은 바꾸지 않음)
     insert_optimization_markers(module, groups)
 
@@ -329,6 +339,7 @@ def verify_transform(model, example_input, model_name="model"):
         dataflow_edges=rngd_edges,
         fusion_groups=fusion_counter.most_common(),
         checks=checks,
+        pattern_templates=pattern_templates,
     )
 
 

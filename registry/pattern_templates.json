@@ -1,0 +1,928 @@
+{
+ "RMSNORM": {
+  "name": "RMSNORM",
+  "kind": "RMSNORM",
+  "variant": "",
+  "source": {
+   "model": "llama_sim_small",
+   "labels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "ops": [
+    "elementwise(pow2)",
+    "reduce(sum)",
+    "elementwise(div)",
+    "elementwise(add)",
+    "elementwise(rsqrt)",
+    "elementwise(mul)",
+    "elementwise(mul)"
+   ]
+  },
+  "match_mode": "",
+  "description": "Llama-3.1 8B Decoder Layer 구조, 기본 규모(dim 16) — 검증용 모델과 같은 구성",
+  "is_chain": true,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.elementwise",
+    "op_attr": "pow2",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "arg"
+     ],
+     "input_sources": [
+      "arg"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.reduce",
+    "op_attr": "sum",
+    "successors": [
+     2
+    ],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "input_sources": [
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 2,
+    "op_type": "rngd.elementwise",
+    "op_attr": "div",
+    "successors": [
+     3
+    ],
+    "predecessors": [
+     1
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 3,
+    "op_type": "rngd.elementwise",
+    "op_attr": "add",
+    "successors": [
+     4
+    ],
+    "predecessors": [
+     2
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 4,
+    "op_type": "rngd.elementwise",
+    "op_attr": "rsqrt",
+    "successors": [
+     5
+    ],
+    "predecessors": [
+     3
+    ],
+    "context": {
+     "input_sources": [
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 5,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [
+     6
+    ],
+    "predecessors": [
+     4
+    ],
+    "context": {
+     "external_sources": [
+      "arg"
+     ],
+     "input_sources": [
+      "arg",
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 6,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [],
+    "predecessors": [
+     5
+    ],
+    "context": {
+     "external_sources": [
+      "const"
+     ],
+     "input_sources": [
+      "rngd",
+      "const"
+     ]
+    }
+   }
+  ]
+ },
+ "SOFTMAX": {
+  "name": "SOFTMAX",
+  "kind": "SOFTMAX",
+  "variant": "",
+  "source": {
+   "model": "llama_sim_small",
+   "labels": [
+    26,
+    27,
+    28,
+    29,
+    30
+   ],
+   "ops": [
+    "reduce(max)",
+    "elementwise(sub)",
+    "elementwise(exp)",
+    "reduce(sum)",
+    "elementwise(div)"
+   ]
+  },
+  "match_mode": "",
+  "description": "Llama-3.1 8B Decoder Layer 구조, 기본 규모(dim 16) — 검증용 모델과 같은 구성",
+  "is_chain": false,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.reduce",
+    "op_attr": "max",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "rngd"
+     ],
+     "input_sources": [
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.elementwise",
+    "op_attr": "sub",
+    "successors": [
+     2
+    ],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "external_sources": [
+      "rngd"
+     ],
+     "input_sources": [
+      "rngd",
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 2,
+    "op_type": "rngd.elementwise",
+    "op_attr": "exp",
+    "successors": [
+     3,
+     4
+    ],
+    "predecessors": [
+     1
+    ],
+    "context": {
+     "input_sources": [
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 3,
+    "op_type": "rngd.reduce",
+    "op_attr": "sum",
+    "successors": [
+     4
+    ],
+    "predecessors": [
+     2
+    ],
+    "context": {
+     "input_sources": [
+      "rngd"
+     ]
+    }
+   },
+   {
+    "id": 4,
+    "op_type": "rngd.elementwise",
+    "op_attr": "div",
+    "successors": [],
+    "predecessors": [
+     2,
+     3
+    ],
+    "context": {
+     "input_sources": [
+      "rngd",
+      "rngd"
+     ]
+    }
+   }
+  ]
+ },
+ "SILU": {
+  "name": "SILU",
+  "kind": "SILU",
+  "variant": "",
+  "source": {
+   "model": "llama_sim_small",
+   "labels": [
+    43,
+    44
+   ],
+   "ops": [
+    "elementwise(sigmoid)",
+    "elementwise(mul)"
+   ]
+  },
+  "match_mode": "",
+  "description": "Llama-3.1 8B Decoder Layer 구조, 기본 규모(dim 16) — 검증용 모델과 같은 구성",
+  "is_chain": true,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.elementwise",
+    "op_attr": "sigmoid",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   }
+  ]
+ },
+ "RESIDUAL": {
+  "name": "RESIDUAL",
+  "kind": "RESIDUAL",
+  "variant": "",
+  "source": {
+   "model": "llama_sim_small",
+   "labels": [
+    34
+   ],
+   "ops": [
+    "elementwise(add)"
+   ]
+  },
+  "match_mode": "context",
+  "description": "Llama-3.1 8B Decoder Layer 구조, 기본 규모(dim 16) — 검증용 모델과 같은 구성",
+  "is_chain": true,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.elementwise",
+    "op_attr": "add",
+    "successors": [],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "arg",
+      "other"
+     ],
+     "input_sources": [
+      "arg",
+      "other"
+     ]
+    }
+   }
+  ]
+ },
+ "FFN": {
+  "name": "FFN",
+  "kind": "FFN",
+  "variant": "SwiGLU",
+  "source": {
+   "model": "llama_sim_small",
+   "labels": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47
+   ],
+   "ops": [
+    "gemm",
+    "elementwise(sigmoid)",
+    "elementwise(mul)",
+    "gemm",
+    "elementwise(mul)",
+    "gemm"
+   ]
+  },
+  "match_mode": "",
+  "description": "Llama-3.1 8B Decoder Layer 구조, 기본 규모(dim 16) — 검증용 모델과 같은 구성",
+  "is_chain": false,
+  "sub_patterns": [
+   "SILU"
+  ],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.elementwise",
+    "op_attr": "sigmoid",
+    "successors": [
+     2
+    ],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 2,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [
+     4,
+     3
+    ],
+    "predecessors": [
+     1
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 3,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     4
+    ],
+    "predecessors": [
+     2
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 4,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [
+     5
+    ],
+    "predecessors": [
+     2,
+     3
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 5,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [],
+    "predecessors": [
+     4
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   }
+  ]
+ },
+ "GELU": {
+  "name": "GELU",
+  "kind": "GELU",
+  "variant": "",
+  "source": {
+   "model": "gelu_ffn",
+   "labels": [
+    1
+   ],
+   "ops": [
+    "elementwise(gelu)"
+   ]
+  },
+  "match_mode": "",
+  "description": "Linear(64→128) → nn.GELU → Linear(128→64) (GPT-2·BERT 식)",
+  "is_chain": true,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.elementwise",
+    "op_attr": "gelu",
+    "successors": [],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   }
+  ]
+ },
+ "RELU": {
+  "name": "RELU",
+  "kind": "RELU",
+  "variant": "",
+  "source": {
+   "model": "reglu_ffn",
+   "labels": [
+    1
+   ],
+   "ops": [
+    "elementwise(relu)"
+   ]
+  },
+  "match_mode": "",
+  "description": "gate·up Linear(64→128), ReLU(gate)·up → Linear(128→64) (PaLM 식)",
+  "is_chain": true,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.elementwise",
+    "op_attr": "relu",
+    "successors": [],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   }
+  ]
+ },
+ "FFN_GELU": {
+  "name": "FFN_GELU",
+  "kind": "FFN",
+  "variant": "GELU",
+  "source": {
+   "model": "gelu_ffn",
+   "labels": [
+    0,
+    1,
+    2
+   ],
+   "ops": [
+    "gemm",
+    "elementwise(gelu)",
+    "gemm"
+   ]
+  },
+  "match_mode": "",
+  "description": "Linear(64→128) → nn.GELU → Linear(128→64) (GPT-2·BERT 식)",
+  "is_chain": true,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.elementwise",
+    "op_attr": "gelu",
+    "successors": [
+     2
+    ],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 2,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [],
+    "predecessors": [
+     1
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   }
+  ]
+ },
+ "FFN_GEGLU": {
+  "name": "FFN_GEGLU",
+  "kind": "FFN",
+  "variant": "GeGLU",
+  "source": {
+   "model": "geglu_ffn",
+   "labels": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "ops": [
+    "gemm",
+    "elementwise(gelu)",
+    "gemm",
+    "elementwise(mul)",
+    "gemm"
+   ]
+  },
+  "match_mode": "",
+  "description": "gate·up Linear(64→128), GELU(gate)·up → Linear(128→64) (Gemma 식)",
+  "is_chain": false,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.elementwise",
+    "op_attr": "gelu",
+    "successors": [
+     3,
+     2
+    ],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 2,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     3
+    ],
+    "predecessors": [
+     1
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 3,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [
+     4
+    ],
+    "predecessors": [
+     1,
+     2
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 4,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [],
+    "predecessors": [
+     3
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   }
+  ]
+ },
+ "FFN_REGLU": {
+  "name": "FFN_REGLU",
+  "kind": "FFN",
+  "variant": "ReGLU",
+  "source": {
+   "model": "reglu_ffn",
+   "labels": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "ops": [
+    "gemm",
+    "elementwise(relu)",
+    "gemm",
+    "elementwise(mul)",
+    "gemm"
+   ]
+  },
+  "match_mode": "",
+  "description": "gate·up Linear(64→128), ReLU(gate)·up → Linear(128→64) (PaLM 식)",
+  "is_chain": false,
+  "sub_patterns": [],
+  "nodes": [
+   {
+    "id": 0,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     1
+    ],
+    "predecessors": [],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 1,
+    "op_type": "rngd.elementwise",
+    "op_attr": "relu",
+    "successors": [
+     3,
+     2
+    ],
+    "predecessors": [
+     0
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 2,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [
+     3
+    ],
+    "predecessors": [
+     1
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   },
+   {
+    "id": 3,
+    "op_type": "rngd.elementwise",
+    "op_attr": "mul",
+    "successors": [
+     4
+    ],
+    "predecessors": [
+     1,
+     2
+    ],
+    "context": {
+     "external_sources": [
+      "other"
+     ],
+     "input_sources": [
+      "rngd",
+      "other"
+     ]
+    }
+   },
+   {
+    "id": 4,
+    "op_type": "rngd.gemm",
+    "op_attr": "",
+    "successors": [],
+    "predecessors": [
+     3
+    ],
+    "context": {
+     "external_sources": [
+      "other",
+      "const"
+     ],
+     "input_sources": [
+      "other",
+      "const"
+     ]
+    }
+   }
+  ]
+ }
+}

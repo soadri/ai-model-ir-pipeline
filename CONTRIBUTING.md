@@ -26,7 +26,7 @@ AI 모델 변환(표준 IR) 파이프라인에 관심을 가져 주셔서 감사
 1. 큰 변경은 먼저 Issue로 방향을 이야기해 주세요. 오탈자 수정 같은 작은 변경은 바로 PR을 보내셔도 됩니다.
 2. 저장소를 fork한 뒤 작업 브랜치를 만듭니다.
 3. 변경한 뒤 아래 「제출 전 확인」을 실행합니다.
-4. PR을 보내면 CI가 체험 이미지를 빌드하고 기본 모델 검증, 데이터 배치 연산 점검, 사용자 모델 경로(GELU FFN, ReGLU FFN) 검증을 실행합니다.
+4. PR을 보내면 CI가 체험 이미지를 빌드하고 기본 모델 검증, 데이터 배치 연산 점검, 사용자 모델 경로(GELU FFN, ReGLU FFN) 검증, 예시 기반 패턴 식별 일치율 평가를 실행합니다.
 5. 관리자가 검토한 뒤 반영합니다.
 
 ### 제출 전 확인
@@ -37,6 +37,7 @@ AI 모델 변환(표준 IR) 파이프라인에 관심을 가져 주셔서 감사
 python -m server.cli verify --scale sim_small    # 기본 모델 변환·검증 (Level 1-2, Level 3)
 python -m rngd_pipeline.layout_check             # 데이터 배치 연산 의미 점검
 python -m server.cli convert examples/swiglu_ffn.py --require-pass   # 사용자 모델 경로
+python -m rngd_pipeline.pattern_eval              # 예시 기반 패턴 식별 일치율
 ```
 
 Level 3에는 Rust 툴체인이 필요합니다. 준비가 어렵다면 Level 1-2 결과만 확인하고 PR을 보내셔도 되며, CI에서 Level 3까지 실행합니다.
@@ -51,6 +52,17 @@ docs: 빌드 가이드에 로컬 개발 환경 추가
 ```
 
 `feat`(기능 추가), `fix`(오류 수정), `docs`(문서), `refactor`(동작 변화 없는 구조 정리), `ci`(워크플로), `build`(빌드·의존성)를 주로 씁니다.
+
+<br>
+
+## 새 패턴을 예시로 추가하기
+
+예시 기반 패턴 식별은 규칙 코드를 쓰지 않고 **예시 하나**로 새 패턴을 추가합니다.
+
+1. 패턴이 들어 있는 작은 모델을 정하고, NPU 특화 IR 변환 후 데이터 흐름 그래프에서 패턴에 해당하는 노드 번호를 확인합니다.
+2. `rngd_pipeline/pattern_templates.py`의 `EXAMPLES`에 (템플릿 이름, 종류, 변형, 예시 모델, 라벨 노드, 라벨 노드의 연산)을 한 줄 추가하고, 예시 모델이 새로운 모델이면 `example_nodes`에 만드는 방법을 추가합니다.
+3. `python -m rngd_pipeline.pattern_templates --rebuild`로 템플릿을 다시 만듭니다. 라벨 노드의 연산이 적어 둔 연산과 다르면 멈춥니다.
+4. `python -m rngd_pipeline.pattern_eval`로 규칙 기반과의 일치율을 확인합니다. 예시 기반만 찾은 패턴(오탐)이 생기면 안 됩니다.
 
 <br>
 
