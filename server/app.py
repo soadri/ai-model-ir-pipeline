@@ -26,6 +26,21 @@ app.include_router(runs.router)
 app.include_router(registry.router)
 
 
+# 화면 파일은 브라우저가 쓸 때마다 바뀌었는지 확인하게 한다(Cache-Control: no-cache).
+# 바뀌지 않았으면 ETag로 304만 받아 다시 받지 않으므로 속도 영향은 거의 없고,
+# 서버를 새 버전으로 올렸을 때 예전 화면 파일이 남아 새 결과 항목이 보이지 않는 일을 막는다.
+_NO_CACHE_PREFIXES = ("/static/", "/ext/")
+
+
+@app.middleware("http")
+async def _revalidate_web_files(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.startswith(_NO_CACHE_PREFIXES):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.on_event("startup")
 def _startup():
     config.ensure_dirs()
