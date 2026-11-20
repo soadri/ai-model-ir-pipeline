@@ -46,6 +46,9 @@ PyTorch 모델을 linalg IR로 변환하고, 각 연산을 변환 대상·흡수
 **NPU 특화 IR 변환**<br>
 linalg 연산을 NPU 특화 IR(RNGD Dialect) 연산으로 바꿉니다. 예를 들어 `nn.Linear`가 만드는 가중치 transpose와 `linalg.matmul`의 연산 체인은 `transpose_rhs` 속성을 가진 하나의 `gemm`으로 결합되고, GELU·ReLU·sigmoid처럼 여러 기본 연산으로 풀린 활성화 함수는 연산 하나로 합쳐집니다.
 
+**예시 기반 패턴 식별 (실험적)**<br>
+라벨을 붙인 예시 노드로 패턴 템플릿을 만들고 데이터 흐름 그래프에서 같은 모양을 찾는 방법(「AI 모델 중간 표현의 연산 패턴 식별을 위한 예시 기반 분석 기법」)을 규칙 기반 식별과 **나란히** 실행해, 두 결과가 일치하는지 함께 보여 줍니다. 변환·검증·최적화 마커는 계속 규칙 기반 결과를 씁니다. 템플릿 10개(RMSNorm, Softmax, SiLU, GELU, ReLU, Residual, FFN 4종)는 예시 하나씩으로 만들었고, Llama 2개 규모와 대시보드 예시 전체에서 규칙 기반과 모두 일치합니다. Attention은 아직 템플릿이 없습니다.
+
 **계층적 검증**<br>
 Level 1-2에서 IR 변환 정합성 12개 항목을, Level 3에서 NPU 시뮬레이터 실행 결과와 PyTorch 기준값의 수치 정합성을 확인합니다.
 
@@ -95,7 +98,7 @@ Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 1
 Docker만 있으면 됩니다. 이미지(내려받기 약 380MB)는 GitHub Container Registry에서 받습니다.
 
 ```bash
-docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.6
+docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.7
 ```
 
 브라우저에서 `http://localhost:8100`에 접속하면 기본 모델(Llama-3.1 8B Decoder Layer)을 변환·검증하거나, 직접 작성한 PyTorch 모델을 분석할 수 있습니다.
@@ -104,11 +107,11 @@ docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.6
 
 ```bash
 # 기본 모델 변환과 3단계 검증
-docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli verify --scale sim_mid
+docker run --rm ghcr.io/soadri/ai-model-ir-pipeline:0.7 python -m server.cli verify --scale sim_mid
 
 # 직접 작성한 모델 파일 분석 (파일 안에 model, x 변수 정의)
 docker run --rm -v "$PWD/my_model.py:/tmp/model.py:ro" \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.6 python -m server.cli convert /tmp/model.py
+  ghcr.io/soadri/ai-model-ir-pipeline:0.7 python -m server.cli convert /tmp/model.py
 ```
 
 실행 이력을 보존하려면 저장소의 [`docker-compose.yml`](docker-compose.yml)로 `docker compose up -d`를 실행하세요.
@@ -124,7 +127,7 @@ Windows 환경, 해볼 것, 결과 읽는 법, 문제 해결은 [체험 가이�
 배포된 이미지가 이 저장소의 공개 소스에서 GitHub Actions로 빌드됐는지 직접 확인할 수 있습니다.
 
 ```bash
-gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.6 -R soadri/ai-model-ir-pipeline
+gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.7 -R soadri/ai-model-ir-pipeline
 ```
 
 <br>

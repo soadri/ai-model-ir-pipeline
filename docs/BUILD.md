@@ -35,6 +35,10 @@ docker run --rm ai-model-ir-pipeline:dev python -m rngd_pipeline.layout_check
 # 사용자 모델 경로: Level 1-2와 Level 3를 모두 통과하지 못하면 종료 코드 1
 docker run --rm -v "$PWD/examples:/work:ro" ai-model-ir-pipeline:dev \
   python -m server.cli convert /work/swiglu_ffn.py --require-pass
+
+# 예시 기반 패턴 식별: 템플릿 점검과 규칙 기반과의 일치율
+docker run --rm ai-model-ir-pipeline:dev python -m rngd_pipeline.pattern_templates --check
+docker run --rm ai-model-ir-pipeline:dev python -m rngd_pipeline.pattern_eval
 ```
 
 <br>
@@ -128,7 +132,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(24))"
 # 토큰 파일을 쓰는 예 (컨테이너의 /data 볼륨에 둠)
 echo "nota:<만든 토큰>" >> convert_tokens && chmod 600 convert_tokens
 docker run -d -p 8100:8100 -v "$PWD:/data" -e RNGD_CONVERT_TOKEN_FILE=/data/convert_tokens \
-  ghcr.io/soadri/ai-model-ir-pipeline:0.6
+  ghcr.io/soadri/ai-model-ir-pipeline:0.7
 ```
 
 토큰을 설정한 서버에서는 대시보드의 사용자 모델 화면에 토큰 입력칸이 나타나고, API로 호출할 때는 `X-Access-Token` 헤더에 토큰을 넣습니다.

@@ -47,7 +47,7 @@ export function normalizePreset(d, requested) {
     pytorch: [["출력", `[${(l12.ref_output_shape || []).join(", ")}]`], ["자료형", (l12.ref_output_dtype || "").replace("torch.", "")],
               ["모듈", `${(l3.captures || []).length}개`]],
     linalg: { ops: l12.ops_before, lines: ir.linalg_lines, markers: ir.markers_summary || l12.markers || {} },
-    npu: { ops: countOps(ir.rngd_ops), fusion: l12.fusion || {}, edges: l12.dataflow_edges },
+    npu: { ops: countOps(ir.rngd_ops), fusion: l12.fusion || {}, edges: l12.dataflow_edges, templates: l12.pattern_templates },
     unsupported: [],
     l12: {
       pass: l12.pass_count, total: (l12.checks || []).length, ok: l12.all_passed,
@@ -76,7 +76,7 @@ export function normalizeCustom(d) {
     npuOps: d.converted_count,
     pytorch: [["출력", l12.output_shape ? `[${l12.output_shape.join(", ")}]` : "–"]],
     linalg: { lines: d.ir?.linalg_lines, markers: d.markers || {} },
-    npu: { ops: countOps(d.ir?.rngd_ops), fusion: d.fusion || {} },
+    npu: { ops: countOps(d.ir?.rngd_ops), fusion: d.fusion || {}, templates: d.pattern_templates },
     unsupported: d.unsupported || [],
     l12custom: l12,
     l3: {
@@ -138,7 +138,24 @@ function strata(v) {
       h("div", { class: "body" },
         h("div", { class: "ops" }, v.npu.ops.map(([op, n]) => h("span", { class: "op" }, op, h("em", {}, `×${n}`)))),
         fusion.length ? h("div", { class: "ops" }, h("span", { class: "small", style: "align-self:center;margin-right:4px" }, "복합 패턴"),
-          fusion.map(([k, n]) => h("span", { class: "pattern" }, PATTERNS[k] || k, h("em", {}, `×${n}`)))) : null)));
+          fusion.map(([k, n]) => h("span", { class: "pattern" }, PATTERNS[k] || k, h("em", {}, `×${n}`)))) : null,
+        templateNote(v.npu.templates))));
+}
+
+// 예시 기반 패턴 식별(그래프 템플릿 매칭)을 규칙 기반과 나란히 실행한 결과
+function templateNote(t) {
+  if (!t || (!t.comparison && !t.error)) return null;
+  if (t.error) return h("p", { class: "small", style: "margin:8px 0 0" }, `예시 기반 식별: 실행하지 못함 (${t.error})`);
+  const c = t.comparison;
+  const name = (k) => PATTERNS[k] || k;
+  const diff = [
+    ...c.missed.map((m) => `규칙 기반만 ${name(m.pattern)}`),
+    ...c.extra.map((x) => `예시 기반만 ${name(x.pattern)}`),
+  ];
+  return h("p", { class: "small", style: "margin:8px 0 0" },
+    `예시 기반 식별: 규칙 기반과 ${c.agree}/${c.total} 일치`,
+    c.rule_only?.length ? ` · 템플릿 없음 ${c.rule_only.map(name).join(", ")}` : "",
+    diff.length ? ` · ${diff.join(", ")}` : "");
 }
 
 function unsupported(v) {
