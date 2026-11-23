@@ -45,6 +45,7 @@
           <button type="button" class="copy" data-copy="run-cmd">복사</button>
         </div>
         <p class="hint">Docker만 있으면 됩니다. 실행한 뒤 브라우저에서 <code>localhost:8100</code>에 접속하세요.</p>
+        <p class="hint" id="tag-note">이미지 태그는 같은 계열의 최신 오류 수정 버전을 가리킵니다<span id="tag-current"></span>. 전에 받은 이미지가 있으면 먼저 <code id="pull-cmd">docker pull ghcr.io/soadri/ai-model-ir-pipeline:0.7</code>로 새로 받으세요.</p>
 
         <figure class="lens" id="lens" aria-labelledby="lens-caption">
           <div class="lens-bar">

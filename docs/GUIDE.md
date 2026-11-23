@@ -35,6 +35,10 @@ docker --version
 docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.7
 ```
 
+전에 같은 태그의 이미지를 받은 적이 있으면, 먼저 `docker pull ghcr.io/soadri/ai-model-ir-pipeline:0.7`로 새로 받으세요.
+
+> MINOR까지 적은 태그(예: `0.7`)는 같은 계열의 **최신 오류 수정 버전**을 가리킵니다. 지금 어떤 버전인지는 [소개 페이지](https://soadri.github.io/ai-model-ir-pipeline/)나 [Release](https://github.com/soadri/ai-model-ir-pipeline/releases)에서, 실행 중인 버전은 대시보드 오른쪽 위에서 확인할 수 있습니다.
+
 `Uvicorn running on http://0.0.0.0:8100` 메시지가 나오면 브라우저에서 **http://localhost:8100** 에 접속합니다. 종료하려면 터미널에서 `Ctrl+C`를 누르세요.
 
 > [!WARNING]
