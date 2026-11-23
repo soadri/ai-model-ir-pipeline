@@ -73,7 +73,7 @@ Llama-3.1 8B Decoder Layer를 표준 IR로 변환하면 RMSNorm, Attention, FFN(
 
 ## 검증 결과
 
-Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 14336, attention head 32, KV head 8, head dim 128, RoPE와 Causal Mask 포함)로 구성해 검증했습니다.
+Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 14336, attention head 32, KV head 8, head dim 128, RoPE와 Causal Mask 포함)로 구성해 검증했습니다. 아래는 개발 과정의 운영 환경(NPU 시뮬레이터 furiosa-opt 0.6)에서 얻은 기록입니다. 체험 이미지는 같은 구조를 기본·중간 규모로 제공하며, 그 결과는 [Release](https://github.com/soadri/ai-model-ir-pipeline/releases)마다 다시 검증해 공개합니다.
 
 <div align="center">
 
@@ -148,7 +148,8 @@ gh attestation verify oci://ghcr.io/soadri/ai-model-ir-pipeline:0.7 -R soadri/ai
 ## 현재 한계
 
 - 기본 모델 검증은 Llama 계열 Decoder Layer 구조로 진행합니다. 사용자 모델의 Level 3는 Linear, RMSNorm, SiLU, GELU, ReLU 레이어를 커널로 검증하며, 그 밖의 연산은 Level 1-2까지 확인합니다. 변환하지 못한 연산은 분석 결과에 그대로 표시됩니다.
-- reduce 계열 연산은 현재 CPU에서 처리합니다.
+- Level 3는 변환된 IR 전체를 NPU에서 실행하는 단계가 아니라, 연산 종류별 NPU 커널이 대표 데이터에서 PyTorch와 같은 결과를 내는지 확인하는 단계입니다. 기본 모델은 고정된 커널 규모(gemm M=512·K=64·N=512 등)와 미리 만든 기준값을 쓰고, 사용자 모델의 Linear는 실제 가중치를 커널 규모에 맞춰 나눠 검증하며, 활성화 함수(SiLU·GELU·ReLU)는 입력 텐서의 앞 8개 값으로 검증합니다.
+- 독립된 reduce 연산은 NPU 특화 IR로 변환하지만 실행은 CPU 대체 처리로 표시합니다(`rngd.exec = "cpu_fallback"`). RMSNorm 커널 안의 축소는 Level 3에서 NPU 시뮬레이터로 검증합니다.
 - 그 밖의 한계는 [NPU 특화 IR 명세](docs/IR_SPEC.md#9-현재-한계)에 정리했습니다.
 - 표준 IR 변환은 특정 버전의 torch-mlir에 고정되어 있습니다. 최신 torch-mlir의 FX importer 경로로의 이전을 준비하고 있습니다([지원 버전 정책](docs/VERSIONING.md)).
 
