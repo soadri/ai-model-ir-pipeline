@@ -98,8 +98,11 @@ Llama-3.1 8B의 Decoder Layer 한 개를 실제 모델 크기(dim 4096, hidden 1
 Docker만 있으면 됩니다. 이미지(내려받기 약 380MB)는 GitHub Container Registry에서 받습니다.
 
 ```bash
+docker pull ghcr.io/soadri/ai-model-ir-pipeline:0.7    # 전에 받은 이미지가 있으면 최신 오류 수정으로 갱신
 docker run --rm -p 127.0.0.1:8100:8100 ghcr.io/soadri/ai-model-ir-pipeline:0.7
 ```
+
+> MINOR까지 적은 태그(예: `0.7`)는 같은 계열의 **최신 오류 수정 버전**을 가리킵니다. 지금 어떤 버전인지는 [소개 페이지](https://soadri.github.io/ai-model-ir-pipeline/)나 [Release](https://github.com/soadri/ai-model-ir-pipeline/releases)에서, 실행 중인 버전은 대시보드 오른쪽 위에서 확인할 수 있습니다. 전에 받은 이미지가 있으면 `docker pull`로 새로 받아야 최신 오류 수정이 반영됩니다.
 
 브라우저에서 `http://localhost:8100`에 접속하면 기본 모델(Llama-3.1 8B Decoder Layer)을 변환·검증하거나, 직접 작성한 PyTorch 모델을 분석할 수 있습니다.
 

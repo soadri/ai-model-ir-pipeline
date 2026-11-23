@@ -288,11 +288,23 @@ function upstreamBlock(up) {
           h("td", { class: `ver${!r.unused && r.pinned && r.latest !== r.pinned ? " newer" : ""}` }, r.latest))))))));
 }
 
+// 실행 명령의 이미지 태그(MINOR)가 지금 가리키는 버전을 릴리즈 목록(최신순)에서 찾아 표시
+function showTagVersion(releases) {
+  const target = $("#tag-current"), cmd = document.getElementById("run-cmd");
+  const minor = cmd && (cmd.textContent.match(/:(\d+\.\d+)\s*$/) || [])[1];
+  const rel = minor && (releases || []).find((r) => r.tag.startsWith(`v${minor}.`));
+  if (!target || !rel) return;
+  // 릴리즈 시각은 UTC로 오므로 한국 시간 날짜로 바꿔 표시
+  const when = rel.published ? new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "numeric", day: "numeric" }).format(new Date(rel.published)) : "";
+  target.textContent = ` (지금 ${minor} 태그는 ${rel.tag}${when ? `, ${when}` : ""})`;
+}
+
 async function initRecord() {
   const body = $("#record-body");
   let st;
   try {
     st = await (await fetch("data/status.json", { cache: "no-cache" })).json();
+    showTagVersion(st.releases);
   } catch {
     body.replaceChildren(h("p", { class: "loading" }, "검증 기록을 불러오지 못했습니다. ",
       h("a", { href: "https://github.com/soadri/ai-model-ir-pipeline/releases" }, "릴리즈 페이지"), "에서 확인하세요."));
