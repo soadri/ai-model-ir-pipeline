@@ -21,13 +21,19 @@ _BLOCKED = ["os.system", "subprocess", "shutil.rmtree", "open(", "__import__",
             "sys.exit", "os.remove", "os.unlink", "os.rmdir",
             "pathlib", "socket", "requests", "urllib"]
 
-# Level 3 참조값 — Llama-3.1 8B Decoder Layer 검증에서 연산 종류별로 측정한 오차
+# 연산 종류별 검증 근거 — 기본 모델(Llama-3.1 8B Decoder Layer 구조, 기본 규모)의 Level 3 결과.
+# Release 검증이 매번 같은 조건으로 다시 실행해 Release 노트에 공개하는 값이다.
+# (사용자 모델 자체의 Level 3 결과는 level3 항목에 따로 있다)
 _NPU_REF = {
-    "rngd.gemm": {"max_diff": 27.13, "rel_err_pct": 0.9, "source": "FFN 0.6 검증 (gemm M=512,K=64,N=512, 상대오차 0.9%)"},
-    "rngd.batch_gemm": {"max_diff": 2.96, "rel_err_pct": 3.0, "source": "Attention 0.6 검증 (gemv I=256,J=2048, 상대오차 3.0%)"},
-    "rngd.elementwise": {"max_diff": 0.0, "rel_err_pct": 0.0, "source": "RMSNorm 0.6 검증 (A=16, diff=0)"},
-    "rngd.reduce": {"max_diff": 0.0, "rel_err_pct": 0.0, "source": "RMSNorm 0.6 검증 (NPU 트리 reduce, diff=0)"},
-    "rngd.broadcast": {"max_diff": 0.0, "rel_err_pct": 0.0, "source": "데이터 확장 (오차 없음)"},
+    "rngd.gemm": {"max_diff": None, "rel_err_pct": 1.548,
+                  "source": "기본 모델 FFN(SwiGLU) Level 3 — gemm 커널, 상대 오차 1.548%"},
+    "rngd.batch_gemm": {"max_diff": None, "rel_err_pct": 0.7914,
+                        "source": "기본 모델 Attention Level 3 — batch_gemm 커널, 상대 오차 0.7914%"},
+    "rngd.elementwise": {"max_diff": None, "rel_err_pct": 0.0,
+                         "source": "기본 모델 RMSNorm Level 3 — 원소 단위 커널, 오차 0. 활성화 함수(SiLU·GELU·ReLU)는 이 모델의 Level 3에서 따로 검증"},
+    "rngd.reduce": {"max_diff": None, "rel_err_pct": 0.0,
+                    "source": "기본 모델 RMSNorm Level 3 — 커널 안의 축소(합)를 NPU에서 계산, 오차 0. 독립된 reduce 연산은 CPU 대체 처리"},
+    "rngd.broadcast": {"max_diff": None, "rel_err_pct": 0.0, "source": "데이터 확장 (계산 없음)"},
 }
 
 
@@ -191,7 +197,7 @@ def analyze(model, x, code: str, started: float) -> dict:
         "pattern_templates": pattern_templates,
         "level12": level12,
         "npu_ref": {"refs": refs, "all_verified": all_verified,
-                    "basis": "Llama-3.1 8B Decoder Layer (furiosa-opt 0.10, gemm M=512 현실적 규모)"},
+                    "basis": "기본 모델 Level 3 (Llama-3.1 8B Decoder Layer 구조, 기본 규모, furiosa-opt 0.10) — Release마다 다시 검증"},
         "elapsed_s": round(time.time() - started, 2),
         "ir": {
             "linalg_preview": "\n".join(
